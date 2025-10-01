@@ -1,0 +1,36 @@
+---
+name: Refactor
+about: 코드 리팩토링 이슈
+title: Refactoring
+labels: ''
+assignees: ''
+
+---
+
+name: "♻️ Refactoring"
+description: "코드 리팩토링 이슈"
+title: "Refactor: refactor_title"
+labels: ["refactor"]
+assignees: ["Fragarian"]
+
+body:
+  - type: textarea
+    attributes:
+      label: 🔨 리팩토링 목적
+      description: "왜 리팩토링이 필요한지 설명해 주세요. (가독성 개선, 성능 최적화 등)"
+      placeholder: "예: 특정 모듈의 가독성 개선을 위해 리팩토링이 필요합니다."
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ 작업할 내용
+      description: "어떤 부분을 어떻게 리팩토링할지 체크박스 형태로 작성해주세요."
+      value: >
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📍 참고 자료
+      description: "관련 코드, 문서 등 참고 자료가 있다면 작성해 주세요."
+      placeholder: " - `core/models.py` 파일"
