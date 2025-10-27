@@ -1,17 +1,8 @@
----
-name: Refactor
-about: 코드 리팩토링 이슈
-title: Refactoring
-labels: ''
-assignees: 10000dooong
-
----
-
 name: "♻️ Refactoring"
 description: "코드 리팩토링 이슈"
 title: "Refactor: refactor_title"
 labels: ["refactor"]
-assignees: ["Fragarian"]
+assignees: ["10000dooong"]
 
 body:
   - type: textarea
