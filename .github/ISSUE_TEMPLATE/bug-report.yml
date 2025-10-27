@@ -2,7 +2,7 @@ name: "🐞 Bug"
 description: "버그 제보"
 title: "Bug: bug_title"
 labels: ["bug"]
-assignees: ["Fragarian"]
+assignees: ["10000dooong"]
 
 body:
   - type: markdown
