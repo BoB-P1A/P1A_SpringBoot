@@ -1,12 +1,3 @@
----
-name: Bug report
-about: 버그 제보
-title: BUG
-labels: ''
-assignees: 10000dooong
-
----
-
 name: "🐞 Bug"
 description: "버그 제보"
 title: "Bug: bug_title"
