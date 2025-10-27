@@ -2,7 +2,7 @@ name: "📝 Documentation"
 description: "문서화 작업 이슈"
 title: "Docs: documentation_title"
 labels: ["documentation"]
-assignees: ["Fragarian"]
+assignees: ["10000dooong"]
 
 body:
   - type: dropdown
