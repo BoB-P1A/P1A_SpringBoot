@@ -1,12 +1,3 @@
----
-name: Feature
-about: 새로운 기능 제안
-title: Feature
-labels: ''
-assignees: ''
-
----
-
 name: "✨ Feature"
 description: "새로운 기능 제안"
 title: "Feature: feature_title"
