@@ -1,12 +1,3 @@
----
-name: Documentation
-about: 문서화 작업 이슈
-title: Documentation
-labels: ''
-assignees: 10000dooong
-
----
-
 name: "📝 Documentation"
 description: "문서화 작업 이슈"
 title: "Docs: documentation_title"
