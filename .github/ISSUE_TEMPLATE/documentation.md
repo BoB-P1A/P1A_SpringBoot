@@ -3,7 +3,7 @@ name: Documentation
 about: 문서화 작업 이슈
 title: Documentation
 labels: ''
-assignees: ''
+assignees: 10000dooong
 
 ---
 

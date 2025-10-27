@@ -3,7 +3,7 @@ name: Refactor
 about: 코드 리팩토링 이슈
 title: Refactoring
 labels: ''
-assignees: ''
+assignees: 10000dooong
 
 ---
 

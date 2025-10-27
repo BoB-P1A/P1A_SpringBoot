@@ -3,7 +3,7 @@ name: Bug report
 about: 버그 제보
 title: BUG
 labels: ''
-assignees: ''
+assignees: 10000dooong
 
 ---
 
