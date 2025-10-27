@@ -1,3 +1,12 @@
+---
+name: Feature
+about: 새로운 기능 제안
+title: ''
+labels: ''
+assignees: 10000dooong
+
+---
+
 name: "✨ Feature"
 description: "새로운 기능 제안"
 title: "Feature: feature_title"
