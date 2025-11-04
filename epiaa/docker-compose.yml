@@ -1,0 +1,15 @@
+# docker-compose.yml (local dev)
+services:
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: [ "mongo_data:/data/db" ]
+  app:
+    build: .
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - MONGODB_URI=mongodb://mongo:27017/epia
+      - JWT_SECRET=change-me
+    ports: ["8081:8081"]
+    depends_on: [mongo]
+volumes: { mongo_data: {} }
