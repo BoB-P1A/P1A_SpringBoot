@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.ArrayList;
 
 @Document("companies")
 public class Company {
@@ -17,6 +18,8 @@ public class Company {
     public String contactPhone;
 
     public List<Account> accounts;
+    
+    public List<EvaluationItem> evaluationItems = new ArrayList<>();
 
     public Instant createdAt;
     public Instant updatedAt;

@@ -1,62 +1,39 @@
 package com.epia.web;
 
-import com.epia.domain.Task;
-import com.epia.repo.TaskRepo;
-import com.epia.seq.SequenceService;
-import com.epia.support.ApiException;
+import com.epia.domain.ProcessingTask;
+import com.epia.service.TaskService;
 import org.springframework.web.bind.annotation.*;
-import java.util.*; 
 
-@RestController @RequestMapping
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/lifecycle/tasks")
 public class TaskController {
-  private final TaskRepo repo;
-  private final SequenceService seq;
-  
-  public TaskController(TaskRepo r,SequenceService s){ this.repo=r; this.seq=s; }
 
-  // 목록: /tasks?companyId=
-  @GetMapping("/tasks")
-  public List<Task> list(@RequestParam String companyId){ return repo.findByCompanyId(companyId); }
+    private final TaskService service;
 
-  // 생성
-  @PostMapping("/tasks")
-  public Task create(@RequestBody Task t){
-    if(t.companyId==null || t.taskName==null || t.purpose==null || t.personalInfo==null || t.department==null) throw new ApiException(400,"필수 누락");
-    t.id = seq.next("tasks");
-    return repo.save(t);
-  }
+    public TaskController(TaskService service) {
+        this.service = service;
+    }
 
-  // 수정
-  @PutMapping("/tasks/{id}")
-  public Task update(@PathVariable Integer id,@RequestBody Task body){
-    Task t = repo.findById(id).orElseThrow(()->new ApiException(404,"없음"));
-    if(body.taskName!=null) t.taskName=body.taskName;
-    if(body.purpose!=null) t.purpose=body.purpose;
-    if(body.personalInfo!=null) t.personalInfo=body.personalInfo;
-    if(body.department!=null) t.department=body.department;
-    return repo.save(t);
-  }
+    // 목록 조회
+    @GetMapping
+    public List<ProcessingTask> list(@RequestParam String companyId) {
+        return service.list(companyId);
+    }
 
-  // 삭제
-  @DeleteMapping("/tasks/{id}") public Map<String,Object> delete(@PathVariable Integer id){ repo.deleteById(id); return Map.of(); }
+    // 저장 (전체 배열로 저장)
+    @PostMapping
+    public Map<String, String> save(@RequestBody List<ProcessingTask> body) {
+        service.save(body);
+        return Map.of("message", "처리업무표가 저장되었습니다");
+    }
 
-  // 일괄 수정 PUT /tasks/bulk  [{id, taskName, ...}]
-  @PutMapping("/tasks/bulk")
-  public Map<String,Object> bulk(@RequestBody List<Task> list){
-    int cnt=0; for(Task b:list){ var t=repo.findById(b.id).orElse(null); if(t==null) continue;
-      if(b.taskName!=null) t.taskName=b.taskName; if(b.purpose!=null) t.purpose=b.purpose;
-      if(b.personalInfo!=null) t.personalInfo=b.personalInfo; if(b.department!=null) t.department=b.department; repo.save(t); cnt++; }
-    return Map.of("updatedCount",cnt);
-  }
-
-  // 처리업무 메뉴 조회: /lifecycle/tasks?companyId= → id, taskName 만
-  @GetMapping("/lifecycle/tasks")
-  public List<Map<String,Object>> menu(@RequestParam String companyId){
-    var list = repo.findByCompanyId(companyId);
-    return list.stream()
-            .map(t -> Map.<String, Object>of(
-                    "id", t.id,
-                    "taskName", t.taskName
-            ))
-            .toList();  }
+    // 삭제
+    @DeleteMapping("/{id}")
+    public Map<String, String> delete(@PathVariable Integer id) {
+        service.delete(id);
+        return Map.of("message", "삭제되었습니다");
+    }
 }
