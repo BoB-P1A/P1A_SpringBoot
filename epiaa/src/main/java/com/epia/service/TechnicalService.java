@@ -35,17 +35,27 @@ public class TechnicalService {
     }
 
     public TechnicalSystem addSystem(TechnicalSystem s) {
-        s.id = seq.next("technical_systems");
+        if (s.id == null) {  // ID가 없을 때만 생성
+            s.id = seq.next("technical_systems");
+            System.out.println("🔍 새 ID 생성: " + s.id);
+        }
+        System.out.println("🔍 저장 완료: " + s.systemName);
         return systemRepo.save(s);
     }
 
     public TechnicalSystem updateSystem(Integer id, String name) {
-        TechnicalSystem s = systemRepo.findById(id).orElseThrow();
+        TechnicalSystem s = systemRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("시스템을 찾을 수 없습니다."));
         s.systemName = name;
         return systemRepo.save(s);
     }
 
     public void deleteSystem(Integer id) {
+        TechnicalSystem system = systemRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("시스템을 찾을 수 없습니다."));
+
+        // 관련 체크리스트도 삭제
+        checklistRepo.deleteBySystemName(system.systemName);
         systemRepo.deleteById(id);
     }
 
@@ -54,10 +64,34 @@ public class TechnicalService {
         return checklistRepo.findByCompanyId(companyId);
     }
 
-    public void saveChecklists(List<TechnicalChecklistRow> arr) {
-        for (TechnicalChecklistRow r : arr) {
-            if (r.id == null) r.id = seq.next("technical_checklists");
-            checklistRepo.save(r);
+    /**
+     * 여러 체크리스트 일괄 저장 (프론트엔드의 handleSave 대응)
+     */
+    public void saveChecklists(String companyId, String systemName, List<TechnicalChecklistRow> items) {
+        for (TechnicalChecklistRow item : items) {
+            // evaluationItemId가 있으면 기존 체크리스트 조회
+            if (item.evaluationItemId != null) {
+                var existing = checklistRepo.findByCompanyIdAndSystemNameAndEvaluationItemId(
+                        companyId, systemName, item.evaluationItemId);
+
+                if (existing.isPresent()) {
+                    // 기존 데이터 업데이트
+                    TechnicalChecklistRow row = existing.get();
+                    row.status = item.status;
+                    row.evidence = item.evidence;
+                    row.files = item.files;
+                    checklistRepo.save(row);
+                    continue;
+                }
+            }
+
+            // 새 데이터 생성
+            if (item.id == null) {
+                item.id = seq.next("technical_checklists");
+            }
+            item.companyId = companyId;
+            item.systemName = systemName;
+            checklistRepo.save(item);
         }
     }
 

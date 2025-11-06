@@ -11,6 +11,7 @@ public class TechnicalChecklistRow {
     public Integer id;  // Auto-increment
     public String companyId;
     public String systemName; // ★ 기술 영역에서는 시스템명으로 연결됨
+    public Integer evaluationItemId;  // ★ 평가항목 ID 연결
 
     public String field;
     public String subField;
@@ -27,6 +28,7 @@ public class TechnicalChecklistRow {
     public TechnicalChecklistRow(String companyId, EvaluationItem i) {
         this.companyId = companyId;
         this.systemName = null; // ★ 시스템 생성 시 매핑됨
+        this.evaluationItemId = i.id;
         this.field = i.field;
         this.subField = i.subField;
         this.no = i.no;
