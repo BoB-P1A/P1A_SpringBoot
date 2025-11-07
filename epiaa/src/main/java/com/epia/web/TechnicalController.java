@@ -109,36 +109,21 @@ public class TechnicalController {
     }
 
     // ===== Action Plans =====
-    @GetMapping("/actionplans")
-    public List<ActionPlan> plans(
-            @RequestParam String companyId,
-            @RequestParam String systemName) {
-        return svc.getActionPlans(companyId, systemName);
+    @GetMapping("/action-plans")
+    public Map<String, Object> getActionPlans(@RequestParam String companyId) {
+        System.out.println("GET /technical/action-plans - companyId: " + companyId);
+        return svc.getActionPlansMap(companyId);
     }
 
-    @PostMapping("/actionplans")
-    public Map<String, String> savePlans(@RequestBody Map<String, Object> body) {
+    @PostMapping("/action-plans")
+    public Map<String, String> saveActionPlans(@RequestBody Map<String, Object> body) {
         String companyId = (String) body.get("companyId");
-        String systemName = (String) body.get("systemName");
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> dataList = (List<Map<String, Object>>) body.get("data");
+        Map<String, Object> actionPlans = (Map<String, Object>) body.get("actionPlans");
 
-        List<ActionPlan> plans = dataList.stream()
-                .map(this::mapToActionPlan)
-                .collect(Collectors.toList());
+        System.out.println("POST /technical/action-plans - companyId: " + companyId);
 
-        svc.saveActionPlans(companyId, systemName, plans);
+        svc.saveActionPlansFromMap(companyId, actionPlans);
         return Map.of("message", "저장되었습니다");
-    }
-
-    private ActionPlan mapToActionPlan(Map<String, Object> map) {
-        ActionPlan plan = new ActionPlan();
-        plan.no = (String) map.get("no");
-        plan.title = (String) map.get("title");
-        plan.period = (String) map.get("period");
-        plan.department = (String) map.get("department");
-        plan.owner = (String) map.get("owner");
-        plan.date = (String) map.get("date");
-        return plan;
     }
 }
