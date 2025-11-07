@@ -1,64 +1,178 @@
 package com.epia.service;
 
 import com.epia.domain.*;
+import com.epia.domain.embedded.ActionPlan;
+import com.epia.domain.embedded.ChecklistItem;
 import com.epia.repo.*;
 import com.epia.seq.SequenceService;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class TechnicalService {
 
-    private final TechnicalSystemRepo systemRepo;
-    private final TechnicalChecklistRepo checklistRepo;
+    private final CompanyRepo companyRepo;
     private final TechnicalImprovementRepo improvementRepo;
-    private final TechnicalActionPlanRepo actionPlanRepo;
     private final SequenceService seq;
 
     public TechnicalService(
-            TechnicalSystemRepo systemRepo,
-            TechnicalChecklistRepo checklistRepo,
+            CompanyRepo companyRepo,
             TechnicalImprovementRepo improvementRepo,
-            TechnicalActionPlanRepo actionPlanRepo,
             SequenceService seq
     ) {
-        this.systemRepo = systemRepo;
-        this.checklistRepo = checklistRepo;
+        this.companyRepo = companyRepo;
         this.improvementRepo = improvementRepo;
-        this.actionPlanRepo = actionPlanRepo;
         this.seq = seq;
     }
 
     // ===== 시스템(대상) =====
     public List<TechnicalSystem> getSystems(String companyId) {
-        return systemRepo.findByCompanyId(companyId);
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+
+        if (company.technicalSystems == null) {
+            company.technicalSystems = new ArrayList<>();
+        }
+        return company.technicalSystems;
     }
 
-    public TechnicalSystem addSystem(TechnicalSystem s) {
-        s.id = seq.next("technical_systems");
-        return systemRepo.save(s);
+    public TechnicalSystem addSystem(String companyId, TechnicalSystem s) {
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+
+        if (company.technicalSystems == null) {
+            company.technicalSystems = new ArrayList<>();
+        }
+
+        // ObjectId 자동 생성
+        if (s.id == null) {
+            s.id = new ObjectId();
+        }
+
+        // 평가항목의 no만 저장 (area가 "2."로 시작하는 항목)
+        List<String> technicalNos = company.evaluationItems.stream()
+                .filter(item -> item.area != null && item.area.startsWith("2."))
+                .map(item -> item.no)
+                .collect(Collectors.toList());
+
+        s.technicalChecklist = technicalNos.stream()
+                .map(no -> {
+                    ChecklistItem checklistItem = new ChecklistItem();
+                    checklistItem.no = no;  // ← no만 저장
+                    checklistItem.status = null;
+                    checklistItem.evidence = "";
+                    checklistItem.files = new ArrayList<>();
+                    return checklistItem;
+                })
+                .collect(Collectors.toList());
+
+        // 조치계획 초기화
+        if (s.actionPlans == null) {
+            s.actionPlans = new ArrayList<>();
+        }
+
+        company.technicalSystems.add(s);
+        companyRepo.save(company);
+
+        System.out.println(" 저장 완료: " + s.systemName + " (체크리스트: " + s.technicalChecklist.size() + "개)");
+        return s;
     }
 
-    public TechnicalSystem updateSystem(Integer id, String name) {
-        TechnicalSystem s = systemRepo.findById(id).orElseThrow();
-        s.systemName = name;
-        return systemRepo.save(s);
+    public TechnicalSystem updateSystem(ObjectId id, String name) {
+        List<Company> companies = companyRepo.findAll();
+
+        for (Company company : companies) {
+            if (company.technicalSystems != null) {
+                for (TechnicalSystem system : company.technicalSystems) {
+                    if (system.id.equals(id)) {
+                        system.systemName = name;
+                        companyRepo.save(company);
+
+                        System.out.println(" 시스템명 변경: → " + name);
+                        return system;
+                    }
+                }
+            }
+        }
+
+        throw new RuntimeException("시스템을 찾을 수 없습니다.");
     }
 
-    public void deleteSystem(Integer id) {
-        systemRepo.deleteById(id);
+    public void deleteSystem(ObjectId id) {
+        List<Company> companies = companyRepo.findAll();
+
+        for (Company company : companies) {
+            if (company.technicalSystems != null) {
+                boolean removed = company.technicalSystems.removeIf(sys -> sys.id.equals(id));
+
+                if (removed) {
+                    companyRepo.save(company);
+                    System.out.println(" 시스템 삭제 완료 (ID: " + id + ")");
+                    return;
+                }
+            }
+        }
+
+        throw new RuntimeException("시스템을 찾을 수 없습니다.");
     }
 
     // ===== 체크리스트 =====
-    public List<TechnicalChecklistRow> getChecklists(String companyId) {
-        return checklistRepo.findByCompanyId(companyId);
+    public List<ChecklistItem> getChecklists(String companyId, String systemName) {
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+
+        return company.technicalSystems.stream()
+                .filter(sys -> sys.systemName.equals(systemName))
+                .findFirst()
+                .map(sys -> sys.technicalChecklist)
+                .orElse(new ArrayList<>());
     }
 
-    public void saveChecklists(List<TechnicalChecklistRow> arr) {
-        for (TechnicalChecklistRow r : arr) {
-            if (r.id == null) r.id = seq.next("technical_checklists");
-            checklistRepo.save(r);
+    public void saveChecklists(String companyId, String systemName, List<ChecklistItem> items) {
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+
+        for (TechnicalSystem system : company.technicalSystems) {
+            if (system.systemName.equals(systemName)) {
+                system.technicalChecklist = items;
+                companyRepo.save(company);
+                System.out.println(" 체크리스트 저장: " + items.size() + "개");
+                return;
+            }
         }
+
+        throw new RuntimeException("시스템을 찾을 수 없습니다: " + systemName);
+    }
+
+    // ===== 조치계획 =====
+    public List<ActionPlan> getActionPlans(String companyId, String systemName) {
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+
+        return company.technicalSystems.stream()
+                .filter(sys -> sys.systemName.equals(systemName))
+                .findFirst()
+                .map(sys -> sys.actionPlans)
+                .orElse(new ArrayList<>());
+    }
+
+    public void saveActionPlans(String companyId, String systemName, List<ActionPlan> plans) {
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+
+        for (TechnicalSystem system : company.technicalSystems) {
+            if (system.systemName.equals(systemName)) {
+                system.actionPlans = plans;
+                companyRepo.save(company);
+                System.out.println(" 조치계획 저장: " + plans.size() + "개");
+                return;
+            }
+        }
+
+        throw new RuntimeException("시스템을 찾을 수 없습니다: " + systemName);
     }
 
     // ===== 개선가이드 =====
@@ -68,14 +182,5 @@ public class TechnicalService {
 
     public void saveImprovements(TechnicalImprovement body) {
         improvementRepo.save(body);
-    }
-
-    // ===== 조치계획 =====
-    public List<TechnicalActionPlan> getActionPlans(String companyId) {
-        return actionPlanRepo.findByCompanyId(companyId);
-    }
-
-    public void saveActionPlans(TechnicalActionPlan body) {
-        actionPlanRepo.save(body);
     }
 }

@@ -13,9 +13,23 @@ import java.util.List;
 public class EvaluationItemService {
 
     private final CompanyRepo companyRepo;
+    private final EvaluationItemRepo itemRepo;
+    private final LifecycleChecklistRepo lifecycleRepo;
+    private final SecurityChecklistRepo securityRepo;
+    private final SequenceService seq;
 
     public EvaluationItemService(CompanyRepo companyRepo) {
         this.companyRepo = companyRepo;
+    public EvaluationItemService(
+            EvaluationItemRepo itemRepo,
+            LifecycleChecklistRepo lifecycleRepo,
+            SecurityChecklistRepo securityRepo,
+            SequenceService seq
+    ) {
+        this.itemRepo = itemRepo;
+        this.lifecycleRepo = lifecycleRepo;
+        this.securityRepo = securityRepo;
+        this.seq = seq;
     }
 
     /** 목록 */
@@ -38,5 +52,25 @@ public class EvaluationItemService {
                 .orElseThrow(() -> new ApiException(404, "평가항목 없음"));
 
         return EvaluationItemDto.of(target, c.id);
+        itemRepo.save(item);
+
+        String prefix = item.no.substring(0, 1);
+
+        switch (prefix) {
+            case "1" -> {
+                var row = new LifecycleChecklistRow(item.companyId, item);
+                row.id = seq.next("lifecycle_checklists");
+                lifecycleRepo.save(row);
+            }
+            case "3" -> {
+                var row = new SecurityChecklistRow(item.companyId, item);
+                row.id = seq.next("security_checklists");
+                securityRepo.save(row);
+            }
+        }
+    }
+
+    public void delete(Integer id) {
+        itemRepo.deleteById(id);
     }
 }

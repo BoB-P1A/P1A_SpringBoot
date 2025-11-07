@@ -2,6 +2,7 @@ package com.epia.web;
 
 import com.epia.domain.ProcessingTask;
 import com.epia.service.TaskService;
+import org.bson.types.ObjectId;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,8 +33,8 @@ public class TaskController {
 
     // 삭제
     @DeleteMapping("/{id}")
-    public Map<String, String> delete(@PathVariable Integer id) {
-        service.delete(id);
+    public Map<String, String> delete(@PathVariable String id) {
+        service.delete(new ObjectId(id));
         return Map.of("message", "삭제되었습니다");
     }
 }
