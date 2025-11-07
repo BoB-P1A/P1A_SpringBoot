@@ -3,6 +3,7 @@ package com.epia.web;
 import com.epia.domain.*;
 import com.epia.domain.embedded.ActionPlan;
 import com.epia.domain.embedded.ChecklistItem;
+import com.epia.dto.TechnicalChecklistDetailDto;
 import com.epia.dto.TechnicalSystemDto;
 import com.epia.service.TechnicalService;
 import org.bson.types.ObjectId;
@@ -59,11 +60,11 @@ public class TechnicalController {
 
     // ===== Checklist =====
     @GetMapping("/checklists")
-    public List<ChecklistItem> checklists(
+    public List<TechnicalChecklistDetailDto> checklists(
             @RequestParam String companyId,
-            @RequestParam String systemName) {  // ← systemName 필수
-        System.out.println(" GET /technical/checklists - companyId: " + companyId + ", systemName: " + systemName);
-        return svc.getChecklists(companyId, systemName);
+            @RequestParam(required = false) String systemName,
+            @RequestParam(required = false) List<String> status) {
+        return svc.getChecklistsWithDetails(companyId, systemName, status);
     }
 
     @PostMapping("/checklists")
