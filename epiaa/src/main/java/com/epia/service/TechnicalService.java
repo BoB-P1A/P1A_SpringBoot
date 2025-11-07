@@ -150,31 +150,94 @@ public class TechnicalService {
     }
 
     // ===== 조치계획 =====
-    public List<ActionPlan> getActionPlans(String companyId, String systemName) {
+    public Map<String, Object> getActionPlansMap(String companyId) {
         Company company = companyRepo.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
 
-        return company.technicalSystems.stream()
-                .filter(sys -> sys.systemName.equals(systemName))
-                .findFirst()
-                .map(sys -> sys.actionPlans)
-                .orElse(new ArrayList<>());
-    }
+        Map<String, Object> result = new java.util.HashMap<>();
 
-    public void saveActionPlans(String companyId, String systemName, List<ActionPlan> plans) {
-        Company company = companyRepo.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
-
-        for (TechnicalSystem system : company.technicalSystems) {
-            if (system.systemName.equals(systemName)) {
-                system.actionPlans = plans;
-                companyRepo.save(company);
-                System.out.println(" 조치계획 저장: " + plans.size() + "개");
-                return;
+        if (company.technicalSystems != null) {
+            for (TechnicalSystem system : company.technicalSystems) {
+                if (system.actionPlans != null) {
+                    for (ActionPlan plan : system.actionPlans) {
+                        String key = system.systemName + "-" + plan.no;
+                        Map<String, String> planMap = new java.util.HashMap<>();
+                        planMap.put("systemName", system.systemName);
+                        planMap.put("code", plan.no);
+                        planMap.put("actionPlan", plan.title != null ? plan.title : "");
+                        planMap.put("actionPeriod", plan.period != null ? plan.period : "");
+                        planMap.put("department", plan.department != null ? plan.department : "");
+                        planMap.put("manager", plan.owner != null ? plan.owner : "");
+                        planMap.put("actionDate", plan.date != null ? plan.date : "");
+                        result.put(key, planMap);
+                    }
+                }
             }
         }
 
-        throw new RuntimeException("시스템을 찾을 수 없습니다: " + systemName);
+        System.out.println(" 조치계획 조회: " + result.size() + "개");
+        return result;
+    }
+
+    public void saveActionPlansFromMap(String companyId, Map<String, Object> actionPlansMap) {
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+
+        if (company.technicalSystems == null) {
+            company.technicalSystems = new ArrayList<>();
+        }
+
+        // 각 시스템별로 조치계획을 분류하여 저장
+        Map<String, List<ActionPlan>> systemPlansMap = new java.util.HashMap<>();
+
+        for (Map.Entry<String, Object> entry : actionPlansMap.entrySet()) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> planData = (Map<String, String>) entry.getValue();
+
+            String systemName = planData.get("systemName");
+            String code = planData.get("code");
+
+            ActionPlan plan = new ActionPlan();
+            plan.no = code;
+            plan.title = planData.get("actionPlan");
+            plan.period = planData.get("actionPeriod");
+            plan.department = planData.get("department");
+            plan.owner = planData.get("manager");
+            plan.date = planData.get("actionDate");
+
+            systemPlansMap.computeIfAbsent(systemName, k -> new ArrayList<>()).add(plan);
+        }
+
+        // 각 시스템의 조치계획 업데이트
+        for (TechnicalSystem system : company.technicalSystems) {
+            List<ActionPlan> plans = systemPlansMap.get(system.systemName);
+            if (plans != null) {
+                // 기존 조치계획 중 업데이트되지 않은 항목은 유지
+                if (system.actionPlans == null) {
+                    system.actionPlans = new ArrayList<>();
+                }
+
+                // 업데이트: 동일한 no를 가진 항목은 교체, 없으면 추가
+                for (ActionPlan newPlan : plans) {
+                    boolean found = false;
+                    for (int i = 0; i < system.actionPlans.size(); i++) {
+                        if (system.actionPlans.get(i).no.equals(newPlan.no)) {
+                            system.actionPlans.set(i, newPlan);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        system.actionPlans.add(newPlan);
+                    }
+                }
+
+                System.out.println(" " + system.systemName + " 조치계획 저장: " + plans.size() + "개");
+            }
+        }
+
+        companyRepo.save(company);
+        System.out.println(" 전체 조치계획 저장 완료");
     }
 
     // ===== 개선가이드 =====
