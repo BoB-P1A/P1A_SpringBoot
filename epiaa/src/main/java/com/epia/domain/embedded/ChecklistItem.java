@@ -1,12 +1,11 @@
 package com.epia.domain.embedded;
 
 import java.util.*;
+import java.util.ArrayList;
 
 public class ChecklistItem {
-  public String id;
-  public String no;      // "1.x.x"/"2.x.x"/"3.x.x"
-  public String item;
-  public String status;  // 이행|부분이행|미이행|해당없음
-  public String evidence;
-  public List<String> files = new ArrayList<>();
+    public String no;              // 평가항목 번호 (예: "2.1.1")
+    public String status;       // 이행 상태
+    public String evidence;     // 평가 근거 및 의견
+    public List<Object> files;  // 첨부파일
 }

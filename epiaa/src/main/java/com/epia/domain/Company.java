@@ -17,9 +17,11 @@ public class Company {
     public String contactName;
     public String contactPhone;
 
-    public List<Account> accounts;
-    
+    public List<Account> accounts = new ArrayList<>();
     public List<EvaluationItem> evaluationItems = new ArrayList<>();
+    public List<ProcessingTask> processingTasks = new ArrayList<>();
+    public List<TechnicalSystem> technicalSystems = new ArrayList<>();
+    public List<SecuritySystem> securitySystems = new ArrayList<>();
 
     public Instant createdAt;
     public Instant updatedAt;
