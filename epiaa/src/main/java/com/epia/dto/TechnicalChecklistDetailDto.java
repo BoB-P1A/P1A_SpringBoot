@@ -4,6 +4,7 @@ import java.util.List;
 
 public class TechnicalChecklistDetailDto {
     // 시스템 정보
+    public String systemId;
     public String systemName;
 
     // 체크리스트 정보
