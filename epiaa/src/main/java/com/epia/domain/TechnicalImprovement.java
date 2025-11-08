@@ -10,7 +10,7 @@ public class TechnicalImprovement {
     public String id;
     public String companyId;
 
-    public Map<String, Info> improvements; // key: systemName-no
+    public Map<String, Info> improvements; // key: systemId-no
 
     public static class Info {
         public String relatedLaw;

@@ -8,4 +8,9 @@ public class ChecklistItem {
     public String status;       // 이행 상태
     public String evidence;     // 평가 근거 및 의견
     public List<Object> files;  // 첨부파일
+
+    // 기본 생성자에서 files 초기화
+    public ChecklistItem() {
+        this.files = new ArrayList<>();
+    }
 }
