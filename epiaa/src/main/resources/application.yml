@@ -8,6 +8,11 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ANT_PATH_MATCHER
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+      enabled: true
 
 management:
   endpoints:
@@ -22,3 +27,10 @@ app:
       - http://localhost:3000
   files:
     local-base-dir: /tmp/epia-files
+
+aws:
+  s3:
+    bucket-name: ${AWS_S3_BUCKET_NAME:epia}
+    region: ${AWS_REGION:ap-southeast-2}
+  access-key-id: ${AWS_ACCESS_KEY_ID}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY}
