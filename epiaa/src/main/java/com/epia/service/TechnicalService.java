@@ -6,12 +6,15 @@ import com.epia.domain.embedded.ChecklistItem;
 import com.epia.dto.TechnicalChecklistDetailDto;
 import com.epia.repo.*;
 import com.epia.seq.SequenceService;
+import com.epia.support.ApiException;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class TechnicalService {
@@ -122,31 +125,28 @@ public class TechnicalService {
     }
 
     // ===== 체크리스트 =====
-    public List<ChecklistItem> getChecklists(String companyId, String systemName) {
-        Company company = companyRepo.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+    public List<ChecklistItem> getChecklists(String companyId, ObjectId systemId) {
+        Company comp = companyRepo.findById(companyId)
+                .orElseThrow(() -> new ApiException(404, "회사 정보를 찾을 수 없습니다"));
 
-        return company.technicalSystems.stream()
-                .filter(sys -> sys.systemName.equals(systemName))
+        return comp.technicalSystems.stream()
+                .filter(sys -> sys.id.equals(systemId))
                 .findFirst()
                 .map(sys -> sys.technicalChecklist)
-                .orElse(new ArrayList<>());
+                .orElseGet(ArrayList::new);
     }
 
-    public void saveChecklists(String companyId, String systemName, List<ChecklistItem> items) {
-        Company company = companyRepo.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
+    public void saveChecklists(String companyId, ObjectId systemId, List<ChecklistItem> items) {
+        Company comp = companyRepo.findById(companyId)
+                .orElseThrow(() -> new ApiException(404, "회사 정보를 찾을 수 없습니다"));
 
-        for (TechnicalSystem system : company.technicalSystems) {
-            if (system.systemName.equals(systemName)) {
-                system.technicalChecklist = items;
-                companyRepo.save(company);
-                System.out.println(" 체크리스트 저장: " + items.size() + "개");
-                return;
-            }
-        }
+        TechnicalSystem targetSystem = comp.technicalSystems.stream()
+                .filter(sys -> sys.id.equals(systemId))
+                .findFirst()
+                .orElseThrow(() -> new ApiException(404, "시스템을 찾을 수 없습니다"));
 
-        throw new RuntimeException("시스템을 찾을 수 없습니다: " + systemName);
+        targetSystem.technicalChecklist = items;
+        companyRepo.save(comp);
     }
 
     // ===== 조치계획 =====
@@ -154,14 +154,17 @@ public class TechnicalService {
         Company company = companyRepo.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다."));
 
-        Map<String, Object> result = new java.util.HashMap<>();
+        Map<String, Object> result = new HashMap<>();
 
         if (company.technicalSystems != null) {
             for (TechnicalSystem system : company.technicalSystems) {
                 if (system.actionPlans != null) {
                     for (ActionPlan plan : system.actionPlans) {
-                        String key = system.systemName + "-" + plan.no;
-                        Map<String, String> planMap = new java.util.HashMap<>();
+                        // key를 systemId-no 형식으로 변경
+                        String key = system.id.toHexString() + "-" + plan.no;
+
+                        Map<String, String> planMap = new HashMap<>();
+                        planMap.put("systemId", system.id.toHexString());
                         planMap.put("systemName", system.systemName);
                         planMap.put("code", plan.no);
                         planMap.put("actionPlan", plan.title != null ? plan.title : "");
@@ -169,6 +172,7 @@ public class TechnicalService {
                         planMap.put("department", plan.department != null ? plan.department : "");
                         planMap.put("manager", plan.owner != null ? plan.owner : "");
                         planMap.put("actionDate", plan.date != null ? plan.date : "");
+
                         result.put(key, planMap);
                     }
                 }
@@ -187,14 +191,14 @@ public class TechnicalService {
             company.technicalSystems = new ArrayList<>();
         }
 
-        // 각 시스템별로 조치계획을 분류하여 저장
-        Map<String, List<ActionPlan>> systemPlansMap = new java.util.HashMap<>();
+        // 각 시스템별로 조치계획을 분류하여 저장 (systemId 기반)
+        Map<String, List<ActionPlan>> systemPlansMap = new HashMap<>();
 
         for (Map.Entry<String, Object> entry : actionPlansMap.entrySet()) {
             @SuppressWarnings("unchecked")
             Map<String, String> planData = (Map<String, String>) entry.getValue();
 
-            String systemName = planData.get("systemName");
+            String systemId = planData.get("systemId");
             String code = planData.get("code");
 
             ActionPlan plan = new ActionPlan();
@@ -205,12 +209,12 @@ public class TechnicalService {
             plan.owner = planData.get("manager");
             plan.date = planData.get("actionDate");
 
-            systemPlansMap.computeIfAbsent(systemName, k -> new ArrayList<>()).add(plan);
+            systemPlansMap.computeIfAbsent(systemId, k -> new ArrayList<>()).add(plan);
         }
 
         // 각 시스템의 조치계획 업데이트
         for (TechnicalSystem system : company.technicalSystems) {
-            List<ActionPlan> plans = systemPlansMap.get(system.systemName);
+            List<ActionPlan> plans = systemPlansMap.get(system.id.toHexString());
             if (plans != null) {
                 // 기존 조치계획 중 업데이트되지 않은 항목은 유지
                 if (system.actionPlans == null) {
@@ -250,7 +254,7 @@ public class TechnicalService {
      */
     public List<TechnicalChecklistDetailDto> getChecklistsWithDetails(
             String companyId,
-            String systemName,      // null이면 모든 시스템
+            ObjectId systemId,     // null이면 모든 시스템
             List<String> statusFilter) {  // ["미이행", "부분이행"]
 
         Company company = companyRepo.findById(companyId)
@@ -262,46 +266,43 @@ public class TechnicalService {
 
         List<TechnicalChecklistDetailDto> result = new ArrayList<>();
 
-        // 모든 시스템 순회
-        for (TechnicalSystem system : company.technicalSystems) {
-            // systemName 필터 (있으면 해당 시스템만)
-            if (systemName != null && !system.systemName.equals(systemName)) {
-                continue;
-            }
-
-            // 체크리스트 순회
-            for (ChecklistItem item : system.technicalChecklist) {
-                // status 필터 (미이행, 부분이행만)
-                if (statusFilter != null && !statusFilter.isEmpty()) {
-                    if (item.status == null || !statusFilter.contains(item.status)) {
-                        continue;
-                    }
-                }
-
-                // 평가항목 찾기
-                EvaluationItem evalItem = evalMap.get(item.no);
-
-                // DTO 생성
-                TechnicalChecklistDetailDto dto = new TechnicalChecklistDetailDto();
-                dto.systemName = system.systemName;
-                dto.no = item.no;
-                dto.status = item.status;
-                dto.evidence = item.evidence;
-                dto.files = item.files;
-
-                if (evalItem != null) {
-                    dto.item = evalItem.item;  // 질의문
-                    dto.law = evalItem.law;    // 관련법률
-                    dto.riskFactors = evalItem.riskFactors;  // 침해요인
-                    dto.improvementGuides = evalItem.improvementGuides;  // 개선가이드
-                    dto.subField = evalItem.subField;
-                    dto.area = evalItem.area;
-                    dto.field = evalItem.field;
-                }
-
-                result.add(dto);
-            }
+        // systemId가 null이면 모든 시스템, 아니면 특정 시스템만
+        Stream<TechnicalSystem> systemStream = company.technicalSystems.stream();
+        if (systemId != null) {
+            systemStream = systemStream.filter(sys -> sys.id.equals(systemId));
         }
+
+        systemStream.forEach(sys -> {
+            if (sys.technicalChecklist != null) {
+                sys.technicalChecklist.forEach(item -> {
+                    // 상태 필터링
+                    if (statusFilter != null && !statusFilter.isEmpty()) {
+                        if (item.status == null || !statusFilter.contains(item.status)) {
+                            return;
+                        }
+                    }
+
+                    EvaluationItem evalItem = evalMap.get(item.no);
+                    if (evalItem != null) {
+                        TechnicalChecklistDetailDto dto = new TechnicalChecklistDetailDto();
+                        dto.systemId = sys.id.toHexString();
+                        dto.systemName = sys.systemName;
+                        dto.no = item.no;
+                        dto.status = item.status;
+                        dto.evidence = item.evidence;
+                        dto.files = item.files;
+                        dto.item = evalItem.item;
+                        dto.law = evalItem.law;
+                        dto.riskFactors = evalItem.riskFactors;
+                        dto.improvementGuides = evalItem.improvementGuides;
+                        dto.subField = evalItem.subField;
+                        dto.area = evalItem.area;
+                        dto.field = evalItem.field;
+                        result.add(dto);
+                    }
+                });
+            }
+        });
 
         return result;
     }

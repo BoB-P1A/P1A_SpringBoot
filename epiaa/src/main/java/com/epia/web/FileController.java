@@ -31,16 +31,17 @@ public class FileController {
             @RequestPart("file") MultipartFile file,
             @RequestPart("companyId") String companyId,
             @RequestPart("category") String category,
-            @RequestPart("systemName") String systemName,
+            @RequestPart("systemId") String systemId,
             @RequestPart("no") String no) {
 
         System.out.println("POST /files/upload/technical - companyId: " + companyId +
                 ", category: " + category +
-                ", systemName: " + systemName +
-                ", no: " + no);
+                ", systemId: " + systemId +
+                ", no: " + no +
+                ", filename: " + file.getOriginalFilename());
 
         try {
-            var result = s3Storage.uploadTechnical(file, companyId, category, systemName, no);
+            var result = s3Storage.uploadTechnical(file, companyId, category, systemId, no);
             return Map.of(
                     "fileUrl", result.fileUrl(),
                     "fileName", result.fileName(),
@@ -49,11 +50,11 @@ public class FileController {
             );
         } catch (IllegalArgumentException e) {
             // 확장자 검증 오류 등 - 400 에러로 변환
-            throw new ApiException(400, e.getMessage());  // ← 변경
+            throw new ApiException(400, e.getMessage());
         } catch (RuntimeException e) {
             // S3 업로드 오류 등 - 500 에러로 변환
             System.err.println("파일 업로드 실패: " + e.getMessage());
-            throw new ApiException(500, e.getMessage());  // ← 변경
+            throw new ApiException(500, e.getMessage());
         }
     }
 
@@ -84,15 +85,24 @@ public class FileController {
     @DeleteMapping("/files")
     public Map<String,String> delete(@RequestBody Map<String,String> b){
         String fileUrl = b.get("fileUrl");
+
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            throw new ApiException(400, "파일 URL이 제공되지 않았습니다");
+        }
+
         boolean ok;
 
         // S3 URL인지 확인
-        if (fileUrl != null && fileUrl.contains(".s3.amazonaws.com")) {
+        if (fileUrl.contains(".s3.")) {
             ok = s3Storage.deleteByUrl(fileUrl);
         } else {
             ok = storage.deleteByUrl(fileUrl);
         }
 
-        return Map.of("message", ok ? "파일이 삭제되었습니다" : "삭제할 파일이 없습니다");
+        if (!ok) {
+            throw new ApiException(500, "파일 삭제에 실패했습니다");
+        }
+
+        return Map.of("message", "파일이 삭제되었습니다");
     }
 }

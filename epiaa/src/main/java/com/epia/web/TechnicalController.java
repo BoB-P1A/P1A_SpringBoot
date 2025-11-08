@@ -62,25 +62,28 @@ public class TechnicalController {
     @GetMapping("/checklists")
     public List<TechnicalChecklistDetailDto> checklists(
             @RequestParam String companyId,
-            @RequestParam(required = false) String systemName,
+            @RequestParam(required = false) String systemId,
             @RequestParam(required = false) List<String> status) {
-        return svc.getChecklistsWithDetails(companyId, systemName, status);
+        System.out.println("GET /technical/checklists - companyId: " + companyId + ", systemId: " + systemId);
+
+        ObjectId systemObjectId = systemId != null ? new ObjectId(systemId) : null;
+        return svc.getChecklistsWithDetails(companyId, systemObjectId, status);
     }
 
     @PostMapping("/checklists")
     public Map<String, String> saveChecklists(@RequestBody Map<String, Object> body) {
         String companyId = (String) body.get("companyId");
-        String systemName = (String) body.get("systemName");
+        String systemId = (String) body.get("systemId");
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> dataList = (List<Map<String, Object>>) body.get("data");
 
-        System.out.println(" POST /technical/checklists - companyId: " + companyId + ", systemName: " + systemName);
+        System.out.println("POST /technical/checklists - companyId: " + companyId + ", systemId: " + systemId);
 
         List<ChecklistItem> items = dataList.stream()
                 .map(this::mapToChecklistItem)
                 .collect(Collectors.toList());
 
-        svc.saveChecklists(companyId, systemName, items);
+        svc.saveChecklists(companyId, new ObjectId(systemId), items);
         return Map.of("message", "저장되었습니다");
     }
 

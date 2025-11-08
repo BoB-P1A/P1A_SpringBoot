@@ -52,7 +52,7 @@ public class S3FileStorageService {
             MultipartFile file,
             String companyId,
             String category,
-            String systemName,
+            String systemId,
             String no
     ) {
         try {
@@ -67,11 +67,11 @@ public class S3FileStorageService {
             // 중복 방지를 위해 UUID 추가
             String uniqueFilename = UUID.randomUUID().toString() + "_" + originalFilename;
 
-            // S3 경로 구성: companyId/category/systemName/no/파일명
+            // S3 경로 구성: companyId/category/systemId/no/파일명
             String s3Key = String.format("%s/%s/%s/%s/%s",
                     companyId,
                     category,
-                    systemName,
+                    systemId,
                     no,
                     uniqueFilename
             );
@@ -159,16 +159,37 @@ public class S3FileStorageService {
     }
 
     /**
-     * S3 URL에서 key 추출 (public 메서드로 변경)
+     * S3 URL에서 key 추출 - URL 디코딩 포함
      */
     public String extractS3KeyFromUrl(String fileUrl) {
-        String pattern = String.format("https://%s.s3.%s.amazonaws.com/", bucketName, region);
+        // 패턴 1: https://버킷명.s3.리전.amazonaws.com/key
+        String pattern1 = String.format("https://%s.s3.%s.amazonaws.com/", bucketName, region);
 
-        if (fileUrl.startsWith(pattern)) {
-            return fileUrl.substring(pattern.length());
+        // 패턴 2: https://s3.리전.amazonaws.com/버킷명/key
+        String pattern2 = String.format("https://s3.%s.amazonaws.com/%s/", region, bucketName);
+
+        // 패턴 3: https://버킷명.s3.amazonaws.com/key (리전 없음)
+        String pattern3 = String.format("https://%s.s3.amazonaws.com/", bucketName);
+
+        String encodedKey = null;
+
+        if (fileUrl.startsWith(pattern1)) {
+            encodedKey = fileUrl.substring(pattern1.length());
+        } else if (fileUrl.startsWith(pattern2)) {
+            encodedKey = fileUrl.substring(pattern2.length());
+        } else if (fileUrl.startsWith(pattern3)) {
+            encodedKey = fileUrl.substring(pattern3.length());
+        } else {
+            throw new IllegalArgumentException("유효하지 않은 S3 URL입니다: " + fileUrl);
         }
 
-        throw new IllegalArgumentException("유효하지 않은 S3 URL입니다: " + fileUrl);
+        // URL 디코딩 (한글 경로 처리)
+        try {
+            return java.net.URLDecoder.decode(encodedKey, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            System.err.println("URL 디코딩 실패, 원본 key 사용: " + encodedKey);
+            return encodedKey;
+        }
     }
 
     /**
@@ -222,19 +243,41 @@ public class S3FileStorageService {
      */
     public boolean deleteByUrl(String fileUrl) {
         try {
-            // URL에서 S3 key 추출
             String s3Key = extractS3KeyFromUrl(fileUrl);
 
+            // 파일 존재 확인
+            try {
+                HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(s3Key)
+                        .build();
+                s3Client.headObject(headRequest);
+            } catch (NoSuchKeyException e) {
+                System.err.println("S3 파일 없음: " + s3Key);
+                return false;
+            }
+
+            // 삭제 실행
             DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
                     .build();
 
             s3Client.deleteObject(deleteObjectRequest);
+            System.out.println("S3 파일 삭제 완료: " + s3Key);
+
             return true;
 
+        } catch (IllegalArgumentException e) {
+            System.err.println("URL 파싱 실패: " + e.getMessage());
+            return false;
         } catch (S3Exception e) {
-            System.err.println("S3 파일 삭제 실패: " + e.getMessage());
+            System.err.println("S3 삭제 실패: " + e.awsErrorDetails().errorMessage());
+            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            System.err.println("파일 삭제 오류: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
