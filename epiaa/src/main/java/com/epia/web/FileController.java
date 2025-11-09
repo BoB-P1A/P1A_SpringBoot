@@ -58,6 +58,38 @@ public class FileController {
         }
     }
 
+    // POST /files/upload/security - S3 업로드 (보안성 검토 전용)
+    @PostMapping(value="/files/upload/security", consumes={"multipart/form-data"})
+    public Map<String,Object> uploadSecurity(
+            @RequestPart("file") MultipartFile file,
+            @RequestPart("companyId") String companyId,
+            @RequestPart("category") String category,
+            @RequestPart("systemId") String systemId,
+            @RequestPart("no") String no) {
+
+        System.out.println("POST /files/upload/security - companyId: " + companyId +
+                ", category: " + category +
+                ", systemId: " + systemId +
+                ", no: " + no +
+                ", filename: " + file.getOriginalFilename());
+
+        try {
+            // uploadTechnical과 동일한 메서드 사용 (S3 경로 구조가 같음)
+            var result = s3Storage.uploadTechnical(file, companyId, category, systemId, no);
+            return Map.of(
+                    "fileUrl", result.fileUrl(),
+                    "fileName", result.fileName(),
+                    "fileSize", result.fileSize(),
+                    "contentType", result.contentType()
+            );
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(400, e.getMessage());
+        } catch (RuntimeException e) {
+            System.err.println("파일 업로드 실패: " + e.getMessage());
+            throw new ApiException(500, e.getMessage());
+        }
+    }
+
     // GET /files/download - Pre-signed URL 생성
     @GetMapping("/files/download")
     public Map<String, String> getDownloadUrl(@RequestParam String fileUrl) {
