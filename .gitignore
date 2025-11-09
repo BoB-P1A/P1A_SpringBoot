@@ -1,6 +1,11 @@
 # Created by https://www.toptal.com/developers/gitignore/api/macos,windows,git,java,maven,eclipse,intellij,gradle,netbeans,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,windows,git,java,maven,eclipse,intellij,gradle,netbeans,visualstudiocode
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
 ### Eclipse ###
 .metadata
 bin/
