@@ -2,7 +2,6 @@ package com.epia.domain;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.util.Map;
 
 @Document("security_improvements")
@@ -11,8 +10,7 @@ public class SecurityImprovement {
     public String id;
     public String companyId;
 
-    // key: "targetName-no"
-    public Map<String, Info> improvements;
+    public Map<String, Info> improvements; // key: systemId-no
 
     public static class Info {
         public String relatedLaw;

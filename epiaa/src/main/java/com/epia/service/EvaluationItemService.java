@@ -12,18 +12,15 @@ public class EvaluationItemService {
 
     private final EvaluationItemRepo itemRepo;
     private final LifecycleChecklistRepo lifecycleRepo;
-    private final SecurityChecklistRepo securityRepo;
     private final SequenceService seq;
 
     public EvaluationItemService(
             EvaluationItemRepo itemRepo,
             LifecycleChecklistRepo lifecycleRepo,
-            SecurityChecklistRepo securityRepo,
             SequenceService seq
     ) {
         this.itemRepo = itemRepo;
         this.lifecycleRepo = lifecycleRepo;
-        this.securityRepo = securityRepo;
         this.seq = seq;
     }
 
@@ -44,11 +41,6 @@ public class EvaluationItemService {
                 var row = new LifecycleChecklistRow(item.companyId, item);
                 row.id = seq.next("lifecycle_checklists");
                 lifecycleRepo.save(row);
-            }
-            case "3" -> {
-                var row = new SecurityChecklistRow(item.companyId, item);
-                row.id = seq.next("security_checklists");
-                securityRepo.save(row);
             }
         }
     }

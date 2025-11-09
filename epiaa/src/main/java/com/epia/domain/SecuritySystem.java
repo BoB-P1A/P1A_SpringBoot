@@ -2,7 +2,6 @@ package com.epia.domain;
 
 import com.epia.domain.embedded.ActionPlan;
 import com.epia.domain.embedded.ChecklistItem;
-import com.epia.domain.embedded.Improvement;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -25,6 +24,5 @@ public class SecuritySystem {
     public Instant updatedAt;
 
     public List<ChecklistItem> securityChecklist = new ArrayList<>();
-    public List<Improvement> improvements = new ArrayList<>();
     public List<ActionPlan> actionPlans = new ArrayList<>();
 }
