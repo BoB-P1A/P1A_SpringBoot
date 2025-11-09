@@ -26,6 +26,37 @@ public class FileController {
         return Map.of("fileUrl", s.fileUrl(), "fileName", s.fileName(), "fileSize", s.fileSize(), "contentType", s.contentType());
     }
 
+    // POST /files/upload/lifecycle - S3 업로드 (라이프사이클 전용)
+    @PostMapping(value="/files/upload/lifecycle", consumes={"multipart/form-data"})
+    public Map<String,Object> uploadLifecycle(
+            @RequestPart("file") MultipartFile file,
+            @RequestPart("companyId") String companyId,
+            @RequestPart("category") String category,
+            @RequestPart("taskId") String taskId,
+            @RequestPart("no") String no) {
+
+        System.out.println("POST /files/upload/lifecycle - companyId: " + companyId +
+                ", category: " + category +
+                ", taskId: " + taskId +
+                ", no: " + no +
+                ", filename: " + file.getOriginalFilename());
+
+        try {
+            var result = s3Storage.uploadLifecycle(file, companyId, category, taskId, no);
+            return Map.of(
+                    "fileUrl", result.fileUrl(),
+                    "fileName", result.fileName(),
+                    "fileSize", result.fileSize(),
+                    "contentType", result.contentType()
+            );
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(400, e.getMessage());
+        } catch (RuntimeException e) {
+            System.err.println("파일 업로드 실패: " + e.getMessage());
+            throw new ApiException(500, e.getMessage());
+        }
+    }
+
     // POST /files/upload/technical - S3 업로드 (기술적 보호조치 전용)
     @PostMapping(value="/files/upload/technical", consumes={"multipart/form-data"})
     public Map<String,Object> uploadTechnical(

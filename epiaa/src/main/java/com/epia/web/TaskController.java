@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/lifecycle/tasks")
+@RequestMapping("/lifecycle/processing-tasks")
 public class TaskController {
 
     private final TaskService service;
