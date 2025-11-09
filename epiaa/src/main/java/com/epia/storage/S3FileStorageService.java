@@ -45,6 +45,62 @@ public class S3FileStorageService {
     }
 
     /**
+     * 라이프사이클 파일 업로드
+     * 경로: /companyId/개인정보처리단계(Lifecycle)/taskId/no/파일명
+     */
+    public FileUploadResult uploadLifecycle(
+            MultipartFile file,
+            String companyId,
+            String category,
+            String taskId,
+            String no
+    ) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                originalFilename = "unnamed_file";
+            }
+
+            // 파일 확장자 검증
+            validateFileExtension(originalFilename);
+
+            // 중복 방지를 위해 UUID 추가
+            String uniqueFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+
+            // S3 경로 구성: companyId/category/taskId/no/파일명
+            String s3Key = String.format("%s/%s/%s/%s/%s",
+                    companyId,
+                    category,
+                    taskId,
+                    no,
+                    uniqueFilename
+            );
+
+            // S3에 파일 업로드 (비공개로 저장)
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .contentType(file.getContentType())
+                    .contentLength(file.getSize())
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
+
+            // 원본 URL 생성
+            String fileUrl = generateS3Url(s3Key);
+
+            return new FileUploadResult(fileUrl, originalFilename, file.getSize(), file.getContentType());
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new RuntimeException("파일 업로드 중 오류가 발생했습니다: " + e.getMessage(), e);
+        } catch (S3Exception e) {
+            throw new RuntimeException("S3 업로드 중 오류가 발생했습니다: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 기술적 보호조치 파일 업로드
      * 경로: /companyId/개인정보처리시스템(Admin)/systemName/no/파일명
      */
