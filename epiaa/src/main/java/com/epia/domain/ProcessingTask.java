@@ -19,7 +19,7 @@ public class ProcessingTask {
     private Date updatedAt;
     private List<FlowTableEntry> flowTable;
     private List<FlowChartNode> flowChart;
-    private List<ChecklistItem> lifecycleChecklist;
+    public List<ChecklistItem> lifecycleChecklist;
     private List<ChecklistItem> technicalChecklist;
     private List<ChecklistItem> securityChecklist;
     private List<Improvement> improvements;
