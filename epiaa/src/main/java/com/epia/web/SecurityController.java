@@ -128,4 +128,21 @@ public class SecurityController {
         svc.saveActionPlansFromMap(companyId, actionPlans);
         return Map.of("message", "저장되었습니다");
     }
+
+    /**
+     * 대시보드용: 모든 System과 Checklist 반환
+     */
+    @GetMapping("/systems-with-checklists")
+    public List<Map<String, Object>> getSystemsWithChecklists(@RequestParam String companyId) {
+        System.out.println("GET /security/systems-with-checklists - companyId: " + companyId);
+        return svc.getSystems(companyId).stream()
+                .map(sys -> {
+                    Map<String, Object> systemData = new java.util.HashMap<>();
+                    systemData.put("systemId", sys.id.toHexString());
+                    systemData.put("systemName", sys.systemName);
+                    systemData.put("securityChecklist", sys.securityChecklist != null ? sys.securityChecklist : new ArrayList<>());
+                    return systemData;
+                })
+                .collect(Collectors.toList());
+    }
 }
