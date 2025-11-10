@@ -179,4 +179,21 @@ public class LifecycleController {
         System.out.println("GET /lifecycle/improvements - companyId: " + companyId);
         return svc.getImprovementsMap(companyId);
     }
+
+    /**
+     * 대시보드용: 모든 Task와 Checklist 반환
+     */
+    @GetMapping("/tasks-with-checklists")
+    public List<Map<String, Object>> getTasksWithChecklists(@RequestParam String companyId) {
+        System.out.println("GET /lifecycle/tasks-with-checklists - companyId: " + companyId);
+        return svc.getTasks(companyId).stream()
+                .map(task -> {
+                    Map<String, Object> taskData = new java.util.HashMap<>();
+                    taskData.put("taskId", task.id.toHexString());
+                    taskData.put("taskName", task.taskName);
+                    taskData.put("lifecycleChecklist", task.lifecycleChecklist != null ? task.lifecycleChecklist : new ArrayList<>());
+                    return taskData;
+                })
+                .collect(Collectors.toList());
+    }
 }
