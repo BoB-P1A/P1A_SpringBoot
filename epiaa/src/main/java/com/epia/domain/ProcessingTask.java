@@ -1,34 +1,27 @@
 package com.epia.domain;
 
-import com.epia.domain.embedded.ActionPlan;
-import com.epia.domain.embedded.ChecklistItem;
+import lombok.Data;
 import org.bson.types.ObjectId;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import java.time.Instant;
-import java.util.ArrayList;
+import com.epia.domain.embedded.*;
+import java.util.Date;
 import java.util.List;
 
-
+@Data
 public class ProcessingTask {
-    @Field("_id")
-    public ObjectId id;  // ← Integer에서 ObjectId로 변경, @Id 제거
-
-    public String companyId;
-    public String taskName;
-    public String purpose;
-    public String department;
-    public String infomation;
-
-    @CreatedDate
-    public Instant createdAt;
-
-    @LastModifiedDate
-    public Instant updatedAt;
-
-    public Object flow;
-    public List<ChecklistItem> lifecycleChecklist = new ArrayList<>();
-    public List<ActionPlan> actionPlans = new ArrayList<>();
+    private ObjectId _id;
+    private String taskName;
+    private String department;
+    private String responsiblePerson;
+    private String purpose;
+    private String personalInfoItems;
+    private String retentionPeriod;
+    private Date createdAt;
+    private Date updatedAt;
+    private List<FlowTableEntry> flowTable;
+    private List<FlowChartNode> flowChart;
+    private List<ChecklistItem> lifecycleChecklist;
+    private List<ChecklistItem> technicalChecklist;
+    private List<ChecklistItem> securityChecklist;
+    private List<Improvement> improvements;
+    private List<ActionPlan> actionPlans;
 }

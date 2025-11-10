@@ -1,4 +1,4 @@
-package com.epia.service;
+/*package com.epia.service;
 
 import com.epia.domain.ProcessingTask;
 import com.epia.repo.TaskRepo;
@@ -25,7 +25,6 @@ public class TaskService {
 
     public void save(List<ProcessingTask> arr) {
         for (ProcessingTask t : arr) {
-            if (t.id == null) t.id = new ObjectId();
             repo.save(t);
         }
     }
@@ -33,4 +32,4 @@ public class TaskService {
     public void delete(ObjectId id) {  // ← Integer → ObjectId
         repo.deleteById(id);
     }
-}
+}*/
