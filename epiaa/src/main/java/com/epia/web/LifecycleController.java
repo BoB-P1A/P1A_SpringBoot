@@ -31,7 +31,7 @@ public class LifecycleController {
     this.clRepo = clr;
     this.seq = s;
   }
-
+/*
   // =========================
   // 흐름표 목록
   // =========================
@@ -87,7 +87,7 @@ public class LifecycleController {
     fcRepo.save(body);
     return Map.of(body.taskName, Map.of("nodes", body.nodes, "links", body.links));
   }
-
+*/
   // =========================
   // 체크리스트 조회 (원본 유지 + taskName 필터 추가)
   // =========================

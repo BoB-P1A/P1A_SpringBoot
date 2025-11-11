@@ -4,7 +4,7 @@ server:
 spring:
   data:
     mongodb:
-      uri: mongodb+srv://ekdus20040415_db_user:20040415a@cluster0.9gwnjkb.mongodb.net/epia?retryWrites=true&w=majority
+      uri: ${MONGODB_URI}
   mvc:
     pathmatch:
       matching-strategy: ANT_PATH_MATCHER
@@ -22,3 +22,10 @@ app:
       - http://localhost:3000
   files:
     local-base-dir: /tmp/epia-files
+
+aws:
+  s3:
+    bucket-name: ${AWS_S3_BUCKET_NAME:epia}
+    region: ${AWS_REGION:ap-southeast-2}
+    access-key-id: ${AWS_ACCESS_KEY_ID}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY}

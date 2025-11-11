@@ -38,7 +38,14 @@ public class ProcessingTaskService {
         for (Document d : docs) list.add(toDto(companyId, d));
         return list;
     }
+    public List<Map<String, Object>> getFlowSheets(String companyId) {
+        return taskRepo.findFlowSheets(companyId);
+    }
 
+    public void saveFlowSheets(String companyId, Map<String, Object> data) {
+        taskRepo.updateFlowSheets(companyId, data);
+    }
+    
     public TaskDtos createTask(TaskCreateRequest req) {
         if (req.getCompanyId() == null || req.getCompanyId().isBlank())
             throw new ApiException(400, "companyId가 필요합니다.");

@@ -10,6 +10,16 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Repository;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
+import org.bson.Document;
+import org.bson.types.ObjectId;
+
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Updates.set;
+import org.bson.types.ObjectId;
 
 import java.util.*;
 
@@ -76,5 +86,55 @@ public class TaskRepo {
             if (_id != null && _id.toHexString().equals(taskId)) return d;
         }
         return null;
+    }
+    
+    public List<Map<String, Object>> findFlowSheets(String companyId) {
+
+        Document company;
+
+        if (!ObjectId.isValid(companyId)) {
+            company = companies().find(eq("name", companyId)).first();
+        } else {
+            company = companies().find(eq("_id", new ObjectId(companyId))).first();
+        }
+
+        if (company == null) return List.of();
+
+        List<Document> tasks = company.getList("processingTasks", Document.class, List.of());
+
+        return tasks.stream()
+                .map(t -> Map.of(
+                        "taskName", t.getString("taskName"),
+                        "sheets", t.get("flow") == null
+                                ? List.of()
+                                : ((Document) t.get("flow")).get("sheets")
+                ))
+                .toList();
+    }
+
+    public boolean updateFlowSheets(String companyId, Map<String, Object> data) {
+
+        MongoCollection<Document> col = mongoTemplate.getCollection("companies");
+
+        data.forEach((taskName, flowObj) -> {
+
+            Map<String, Object> flow = (Map<String, Object>) flowObj;
+
+            col.updateOne(
+                Filters.and(
+                    Filters.eq("_id", new ObjectId(companyId)),
+                    Filters.eq("processingTasks.taskName", taskName)
+                ),
+                Updates.combine(
+                    Updates.set("processingTasks.$.flowTables.collection", flow.getOrDefault("collection", List.of())),
+                    Updates.set("processingTasks.$.flowTables.storage",   flow.getOrDefault("storage", List.of())),
+                    Updates.set("processingTasks.$.flowTables.usage",     flow.getOrDefault("usage", List.of())),
+                    Updates.set("processingTasks.$.flowTables.provision", flow.getOrDefault("provision", List.of())),
+                    Updates.set("processingTasks.$.flowTables.disposal",  flow.getOrDefault("disposal", List.of()))
+                )
+            );
+        });
+
+        return true;
     }
 }
