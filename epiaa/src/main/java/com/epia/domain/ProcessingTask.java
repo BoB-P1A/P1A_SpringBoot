@@ -2,6 +2,7 @@ package com.epia.domain;
 
 import com.epia.domain.embedded.ActionPlan;
 import com.epia.domain.embedded.ChecklistItem;
+import com.epia.domain.embedded.Flow;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -28,7 +29,13 @@ public class ProcessingTask {
     @LastModifiedDate
     public Instant updatedAt;
 
-    public Object flow;
+    public Flow flow;
     public List<ChecklistItem> lifecycleChecklist = new ArrayList<>();
     public List<ActionPlan> actionPlans = new ArrayList<>();
+
+    public ProcessingTask() {
+        if (this.flow == null) {
+            this.flow = new Flow();
+        }
+    }
 }
