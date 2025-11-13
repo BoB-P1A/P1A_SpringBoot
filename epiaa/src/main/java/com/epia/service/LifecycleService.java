@@ -11,15 +11,15 @@ import com.epia.domain.embedded.UseData;
 import com.epia.domain.embedded.ProvideData;
 import com.epia.domain.embedded.DiscardData;
 import com.epia.dto.LifecycleChecklistDetailDto;
+import com.epia.dto.FlowChartImageDto;
+import com.epia.dto.FlowChartImageUrlDto;
+import com.epia.storage.S3FileStorageService;
 import com.epia.repo.CompanyRepo;
 import com.epia.support.ApiException;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -27,9 +27,11 @@ import java.util.stream.Stream;
 public class LifecycleService {
 
     private final CompanyRepo companyRepo;
+    private final S3FileStorageService s3FileStorageService;
 
-    public LifecycleService(CompanyRepo companyRepo) {
+    public LifecycleService(CompanyRepo companyRepo, S3FileStorageService s3FileStorageService) {
         this.companyRepo = companyRepo;
+        this.s3FileStorageService = s3FileStorageService;
     }
 
     // ===== 처리업무 =====
@@ -162,7 +164,7 @@ public class LifecycleService {
             }
         }
 
-        System.out.println("✅ 개선가이드 조회: " + result.size() + "개");
+        System.out.println("개선가이드 조회: " + result.size() + "개");
         return result;
     }
 
@@ -196,7 +198,7 @@ public class LifecycleService {
             }
         }
 
-        System.out.println("✅ 조치계획 조회: " + result.size() + "개");
+        System.out.println("조치계획 조회: " + result.size() + "개");
         return result;
     }
 
@@ -253,12 +255,12 @@ public class LifecycleService {
                     }
                 }
 
-                System.out.println("✅ " + task.taskName + " 조치계획 저장: " + plans.size() + "개");
+                System.out.println(task.taskName + " 조치계획 저장: " + plans.size() + "개");
             }
         }
 
         companyRepo.save(company);
-        System.out.println("✅ 전체 조치계획 저장 완료");
+        System.out.println("전체 조치계획 저장 완료");
     }
 
     // ===== 흐름표 (FlowTable) =====
@@ -293,7 +295,7 @@ public class LifecycleService {
             result.put(task.id.toHexString(), taskData);
         }
 
-        System.out.println("✅ 흐름표 조회: " + result.size() + "개 평가업무");
+        System.out.println("흐름표 조회: " + result.size() + "개 평가업무");
         return result;
     }
 
@@ -426,6 +428,142 @@ public class LifecycleService {
         }
 
         companyRepo.save(company);
-        System.out.println("✅ 흐름표 저장 완료: " + targetTask.taskName);
+        System.out.println("흐름표 저장 완료: " + targetTask.taskName);
+    }
+
+    /**
+     * S3에서 모든 흐름도 이미지 목록 조회
+     * @param companyId 회사 ID
+     * @return taskId를 키로 하는 이미지 정보 Map
+     */
+    public Map<String, FlowChartImageDto> getAllFlowChartImages(String companyId) {
+        Map<String, FlowChartImageDto> result = new HashMap<>();
+        String basePrefix = companyId + "/개인정보흐름도/";
+
+        try {
+            // S3에서 taskId 폴더 목록 조회
+            List<String> taskFolders = s3FileStorageService.listFolders(basePrefix);
+
+            for (String taskFolder : taskFolders) {
+                // taskId 추출 (예: "company123/개인정보흐름도/task456/" -> "task456")
+                String taskId = extractTaskIdFromPath(taskFolder);
+                if (taskId == null || taskId.isEmpty()) {
+                    continue;
+                }
+
+                // 해당 taskId 폴더 내 이미지 파일 검색
+                List<String> imageFiles = s3FileStorageService.listImageFiles(
+                        taskFolder,
+                        Arrays.asList(".png", ".jpg", ".jpeg")
+                );
+
+                if (!imageFiles.isEmpty()) {
+                    // 첫 번째 이미지 파일 선택
+                    String imageKey = imageFiles.get(0);
+                    String fileName = extractFileNameFromPath(imageKey);
+
+                    // Pre-signed URL 생성 (1시간)
+                    String presignedUrl = s3FileStorageService.generateFlowChartPresignedUrl(imageKey, 3600);
+
+                    result.put(taskId, new FlowChartImageDto(fileName, presignedUrl));
+                }
+            }
+
+            System.out.println("흐름도 이미지 조회: " + result.size() + "개");
+            return result;
+
+        } catch (Exception e) {
+            System.err.println("흐름도 이미지 목록 조회 실패: " + e.getMessage());
+            throw new ApiException(500, "흐름도 이미지 목록 조회 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 특정 흐름도 이미지의 Pre-signed URL 조회
+     * @param companyId 회사 ID
+     * @param taskId 평가업무 ID
+     * @param fileName 파일명
+     * @return 이미지 URL 정보
+     */
+    public FlowChartImageUrlDto getFlowChartImageUrl(String companyId, String taskId, String fileName) {
+        String s3Key = companyId + "/개인정보흐름도/" + taskId + "/" + fileName;
+
+        try {
+            // 파일 존재 여부 확인
+            if (!s3FileStorageService.fileExists(s3Key)) {
+                throw new ApiException(404, "이미지 파일을 찾을 수 없습니다: " + fileName);
+            }
+
+            // Pre-signed URL 생성 (1시간)
+            String presignedUrl = s3FileStorageService.generateFlowChartPresignedUrl(s3Key, 3600);
+
+            System.out.println("흐름도 이미지 URL 생성: " + fileName);
+            return new FlowChartImageUrlDto(presignedUrl, fileName);
+
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("이미지 URL 생성 실패: " + e.getMessage());
+            throw new ApiException(500, "이미지 URL 생성 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * S3 경로에서 taskId 추출
+     * 예: "company123/개인정보흐름도/task456/" -> "task456"
+     */
+    private String extractTaskIdFromPath(String path) {
+        if (path == null || path.isEmpty()) {
+            return null;
+        }
+
+        String[] parts = path.split("/");
+        for (int i = 0; i < parts.length; i++) {
+            if ("개인정보흐름도".equals(parts[i]) && i + 1 < parts.length) {
+                return parts[i + 1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * S3 경로에서 파일명 추출
+     * 예: "company123/개인정보흐름도/task456/회원가입.png" -> "회원가입.png"
+     */
+    private String extractFileNameFromPath(String path) {
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+
+        int lastSlash = path.lastIndexOf('/');
+        return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+    }
+
+    /**
+     * 특정 흐름도 이미지를 바이트 배열로 다운로드
+     * Word 문서 생성 시 이미지를 포함시킬 때 사용
+     * @param companyId 회사 ID
+     * @param taskId 평가업무 ID
+     * @param fileName 파일명
+     * @return 이미지 바이트 배열
+     */
+    public byte[] downloadFlowChartImage(String companyId, String taskId, String fileName) {
+        String s3Key = companyId + "/개인정보흐름도/" + taskId + "/" + fileName;
+
+        try {
+            if (!s3FileStorageService.fileExists(s3Key)) {
+                throw new ApiException(404, "이미지 파일을 찾을 수 없습니다: " + fileName);
+            }
+
+            byte[] imageBytes = s3FileStorageService.downloadFileAsBytes(s3Key);
+            System.out.println("흐름도 이미지 다운로드: " + fileName + " (" + imageBytes.length + " bytes)");
+            return imageBytes;
+
+        } catch (ApiException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("이미지 다운로드 실패: " + e.getMessage());
+            throw new ApiException(500, "이미지 다운로드 실패: " + e.getMessage());
+        }
     }
 }

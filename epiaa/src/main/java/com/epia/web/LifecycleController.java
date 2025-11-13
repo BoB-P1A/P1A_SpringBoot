@@ -6,6 +6,8 @@ import com.epia.domain.LifecycleFlowChart;
 import com.epia.domain.LifecycleFlowTable;
 import com.epia.domain.ProcessingTask;
 import com.epia.domain.embedded.ChecklistItem;
+import com.epia.dto.FlowChartImageDto;
+import com.epia.dto.FlowChartImageUrlDto;
 import com.epia.dto.LifecycleChecklistDetailDto;
 import com.epia.dto.ProcessingTaskDto;
 import com.epia.repo.LifecycleChecklistRepo;
@@ -156,5 +158,46 @@ public class LifecycleController {
         System.out.println("POST /lifecycle/flowtables - companyId: " + companyId + ", taskId: " + taskId);
         svc.saveFlowTable(companyId, taskId, sheets);
         return Map.of("message", "흐름표가 저장되었습니다");
+    }
+
+    // ===== FlowChart Images =====
+    /**
+     * 모든 흐름도 이미지 목록 조회
+     * GET /lifecycle/flowcharts/images?companyId=company123
+     */
+    @GetMapping("/flowcharts/images")
+    public Map<String, FlowChartImageDto> getAllFlowChartImages(
+            @RequestParam String companyId) {
+        System.out.println("GET /lifecycle/flowcharts/images - companyId: " + companyId);
+        return svc.getAllFlowChartImages(companyId);
+    }
+
+    /**
+     * 특정 흐름도 이미지 URL 조회
+     * GET /lifecycle/flowcharts/image-url?companyId=company123&taskId=task456&fileName=회원가입.png
+     */
+    @GetMapping("/flowcharts/image-url")
+    public FlowChartImageUrlDto getFlowChartImageUrl(
+            @RequestParam String companyId,
+            @RequestParam String taskId,
+            @RequestParam String fileName) {
+        System.out.println("GET /lifecycle/flowcharts/image-url - companyId: " + companyId +
+                ", taskId: " + taskId + ", fileName: " + fileName);
+        return svc.getFlowChartImageUrl(companyId, taskId, fileName);
+    }
+
+    /**
+     * 특정 흐름도 이미지 다운로드 (바이트 배열)
+     * GET /lifecycle/flowcharts/image-bytes?companyId=company123&taskId=task456&fileName=회원가입.png
+     * Word 문서 생성 시 사용
+     */
+    @GetMapping("/flowcharts/image-bytes")
+    public byte[] getFlowChartImageBytes(
+            @RequestParam String companyId,
+            @RequestParam String taskId,
+            @RequestParam String fileName) {
+        System.out.println("GET /lifecycle/flowcharts/image-bytes - companyId: " + companyId +
+                ", taskId: " + taskId + ", fileName: " + fileName);
+        return svc.downloadFlowChartImage(companyId, taskId, fileName);
     }
 }
