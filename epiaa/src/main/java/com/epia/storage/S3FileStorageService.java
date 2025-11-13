@@ -9,7 +9,9 @@ import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import software.amazon.awssdk.services.s3.model.CommonPrefix;
 
+import java.util.stream.Collectors;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -342,5 +344,128 @@ public class S3FileStorageService {
      * 파일 업로드 결과 record
      */
     public record FileUploadResult(String fileUrl, String fileName, long fileSize, String contentType) {}
+
+    /**
+     * 특정 prefix 하위의 폴더(디렉토리) 목록 조회
+     * @param prefix S3 prefix (예: "company123/개인정보흐름도/")
+     * @return 폴더 경로 목록
+     */
+    public List<String> listFolders(String prefix) {
+        try {
+            ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .prefix(prefix)
+                    .delimiter("/")  // 디렉토리 구분자
+                    .build();
+
+            ListObjectsV2Response response = s3Client.listObjectsV2(listRequest);
+
+            // CommonPrefixes가 "폴더"를 나타냄
+            return response.commonPrefixes().stream()
+                    .map(CommonPrefix::prefix)
+                    .collect(Collectors.toList());
+        } catch (S3Exception e) {
+            throw new RuntimeException("S3 폴더 목록 조회 실패: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 특정 prefix 하위의 파일 목록 조회 (확장자 필터링)
+     * @param prefix S3 prefix (예: "company123/개인정보흐름도/task456/")
+     * @param allowedExtensions 허용할 확장자 목록 (예: [".png", ".jpg", ".jpeg"])
+     * @return 파일 키 목록
+     */
+    public List<String> listImageFiles(String prefix, List<String> allowedExtensions) {
+        try {
+            ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .prefix(prefix)
+                    .build();
+
+            ListObjectsV2Response response = s3Client.listObjectsV2(listRequest);
+
+            return response.contents().stream()
+                    .map(S3Object::key)
+                    .filter(key -> !key.endsWith("/"))  // 폴더 제외
+                    .filter(key -> {
+                        String lowerKey = key.toLowerCase();
+                        return allowedExtensions.stream().anyMatch(lowerKey::endsWith);
+                    })
+                    .collect(Collectors.toList());
+        } catch (S3Exception e) {
+            throw new RuntimeException("S3 파일 목록 조회 실패: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 파일 존재 여부 확인
+     * @param s3Key S3 객체 키
+     * @return 존재 여부
+     */
+    public boolean fileExists(String s3Key) {
+        try {
+            HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .build();
+
+            s3Client.headObject(headRequest);
+            return true;
+        } catch (NoSuchKeyException e) {
+            return false;
+        } catch (S3Exception e) {
+            throw new RuntimeException("S3 파일 존재 확인 실패: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 흐름도 이미지용 Pre-signed URL 생성 (1시간 유효, Content-Disposition 없음)
+     * @param s3Key S3 객체 키
+     * @param expirationSeconds 만료 시간 (초)
+     * @return Pre-signed URL
+     */
+    public String generateFlowChartPresignedUrl(String s3Key, int expirationSeconds) {
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    // Content-Disposition 설정 안 함 (브라우저에서 직접 표시용)
+                    .build();
+
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofSeconds(expirationSeconds))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
+            return presignedRequest.url().toString();
+        } catch (S3Exception e) {
+            throw new RuntimeException("Pre-signed URL 생성 실패: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * S3에서 파일 다운로드 (바이트 배열로 반환)
+     * Word 문서에 이미지를 포함시킬 때 사용
+     * @param s3Key S3 객체 키
+     * @return 파일 바이트 배열
+     */
+    public byte[] downloadFileAsBytes(String s3Key) {
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .build();
+
+            software.amazon.awssdk.core.ResponseBytes<software.amazon.awssdk.services.s3.model.GetObjectResponse> objectBytes =
+                    s3Client.getObjectAsBytes(getObjectRequest);
+
+            return objectBytes.asByteArray();
+        } catch (NoSuchKeyException e) {
+            throw new RuntimeException("S3 파일을 찾을 수 없습니다: " + s3Key, e);
+        } catch (S3Exception e) {
+            throw new RuntimeException("S3 파일 다운로드 실패: " + e.getMessage(), e);
+        }
+    }
 
 }
