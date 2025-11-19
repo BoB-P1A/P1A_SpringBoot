@@ -1,39 +1,21 @@
-# docker-compose.yml (local dev)
 services:
-  mongo:
-    image: mongo:7
-    container_name: epia-mongo
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DB}
-    volumes:
-      - mongo_data:/data/db
-
   app:
     build: .
     container_name: epia-springboot
     restart: unless-stopped
-    depends_on:
-      - mongo
 
-    # 여기서 .env 파일을 읽어옴
+    # .env에서 공통 환경변수 불러옴
     env_file:
       - .env
 
-    # .env에서 읽어온 값들을 Spring이 이해하는 이름으로 매핑
     environment:
-      # 프로필
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-
-      # MongoDB: application.yml의 spring.data.mongodb.uri 덮어쓰기
+      # MongoDB (Atlas) 연결 URI – .env의 MONGO_URI를 Spring이 읽도록 매핑
       SPRING_DATA_MONGODB_URI: ${MONGO_URI}
 
-      # JWT (코드에서 @Value("${JWT_SECRET}") or 환경변수 직접 사용)
+      # JWT 시크릿 (코드에서 @Value("${JWT_SECRET}") 등으로 사용 중이라면)
       JWT_SECRET: ${JWT_SECRET}
 
-      # AWS S3 설정 (application.yml에서 이미 ${AWS_...} 참조하고 있음)
+      # AWS S3 (이미 application.yml에서 ${AWS_...} 참조하고 있음)
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
@@ -41,6 +23,3 @@ services:
 
     ports:
       - "8081:8081"
-
-volumes:
-  mongo_data: {}
