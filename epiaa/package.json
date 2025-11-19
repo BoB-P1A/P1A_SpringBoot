@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "mvn:build": "./mvnw.cmd clean package -DskipTests",
+    "mvn:build": "mvnw.cmd clean package -DskipTests",
     "docker:up": "docker-compose up -d --build",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f app",
