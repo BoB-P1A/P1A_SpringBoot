@@ -1,5 +1,3 @@
 # P1A_SpringBoot
 
-# 빌드 방법
-
-P1A_SpringBoot> npm run backend:up:fresh
+P1A_SpringBoot\epiaa> npm run docker:up:fresh

@@ -3,12 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "mvn:build": "mvnw.cmd clean package -DskipTests",
     "docker:up": "docker-compose up -d --build",
+    "docker:up:fresh": "docker-compose down && docker-compose build --no-cache && docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f app",
-    "docker:ps": "docker ps",
-    "backend:up": "npm run mvn:build && npm run docker:up",
-    "backend:up:fresh": "npm run mvn:build && docker-compose down && docker-compose build --no-cache && docker-compose up -d"
+    "docker:logs": "docker-compose logs -f app"
   }
 }
