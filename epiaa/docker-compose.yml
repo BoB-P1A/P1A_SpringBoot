@@ -1,7 +1,7 @@
 services:
-  app:
+  backend:
     build: .
-    container_name: epia-springboot
+    container_name: epia-springboot-backend
     restart: unless-stopped
 
     # .env에서 공통 환경변수 불러옴
