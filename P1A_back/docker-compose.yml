@@ -1,6 +1,8 @@
 services:
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile : Dockerfile
     container_name: epia-springboot-backend
     restart: unless-stopped
 
