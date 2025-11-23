@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 @Service
 public class AccountService {
@@ -66,6 +67,8 @@ public class AccountService {
         newAccount.passwordHash = passwordEncoder.encode(request.passwordHash);
         newAccount.name = request.name;
         newAccount.role = request.role;
+        newAccount.createdAt = Instant.now();
+        newAccount.updatedAt = Instant.now();
 
         company.accounts.add(newAccount);
         companyRepo.save(company);
@@ -100,6 +103,7 @@ public class AccountService {
         account.loginId = request.loginId;
         account.name = request.name;
         account.role = request.role;
+        account.updatedAt = Instant.now();
 
         // 비밀번호가 제공된 경우에만 업데이트
         if (request.passwordHash != null && !request.passwordHash.isEmpty()) {

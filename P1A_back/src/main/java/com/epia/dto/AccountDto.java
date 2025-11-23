@@ -29,8 +29,8 @@ public class AccountDto {
         dto.role = account.role != null ? account.role : "";
         dto.companyId = companyId;
         dto.companyName = companyName != null ? companyName : "";
-        dto.createdAt = "";
-        dto.updatedAt = "";
+        dto.createdAt = account.createdAt != null ? FORMATTER.format(account.createdAt) : "";
+        dto.updatedAt = account.updatedAt != null ? FORMATTER.format(account.updatedAt) : "";
         return dto;
     }
 
