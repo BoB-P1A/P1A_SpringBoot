@@ -7,11 +7,12 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 public class CompanyDto {
+    public String _id;
     public String id;
     public String name;
     public String contactName;
     public String contactPhone;
-    public String createdAt;  // String 타입으로 변경
+    public String createdAt;
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -20,6 +21,7 @@ public class CompanyDto {
     public static CompanyDto from(Company c) {
         CompanyDto d = new CompanyDto();
         d.id = c.id;
+        d._id = c.id;
         d.name = c.name != null ? c.name : "";
         d.contactName = c.contactName != null ? c.contactName : "";
         d.contactPhone = c.contactPhone != null ? c.contactPhone : "";
@@ -34,6 +36,9 @@ public class CompanyDto {
     }
 
     // Getters and Setters
+    public String get_id() { return _id; }
+    public void set_id(String _id) { this._id = _id; }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
