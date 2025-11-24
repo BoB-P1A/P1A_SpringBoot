@@ -205,7 +205,7 @@ public class AccountService {
         private String passwordHash;
         private String name;
         private String role;
-        private String companyId;  // 새로 추가: 소속 기업 변경용
+        private String companyId;
 
         public String getLoginId() { return loginId; }
         public void setLoginId(String loginId) { this.loginId = loginId; }
