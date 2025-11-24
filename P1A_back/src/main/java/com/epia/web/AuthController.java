@@ -58,8 +58,24 @@ public class AuthController {
                 .findFirst()
                 .orElseThrow(() -> new ApiException(401, "사용자 없음"));
 
-        // 현재는 평문 비교 (해시 복귀 시: encoder.matches(rawPassword, acc.passwordHash))
-        if (!rawPassword.equals(acc.passwordHash)) {
+        // 비밀번호 검증: BCrypt 해시 또는 평문 모두 지원 (하위 호환성)
+        boolean passwordMatch = false;
+
+        // 1. BCrypt 해시로 비교 시도
+        try {
+            if (encoder.matches(rawPassword, acc.passwordHash)) {
+                passwordMatch = true;
+            }
+        } catch (Exception e) {
+            // BCrypt 형식이 아닌 경우 평문 비교로 폴백
+        }
+
+        // 2. BCrypt가 아니면 평문 비교 (기존 DB 계정 지원)
+        if (!passwordMatch && rawPassword.equals(acc.passwordHash)) {
+            passwordMatch = true;
+        }
+
+        if (!passwordMatch) {
             throw new ApiException(401, "비밀번호 불일치");
         }
 
