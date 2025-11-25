@@ -35,7 +35,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 정적 리소스 경로 무시 설정
+    // 정적 리소스 경로 무시
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring()
