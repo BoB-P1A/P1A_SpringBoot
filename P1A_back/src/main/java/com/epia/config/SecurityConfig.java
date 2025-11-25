@@ -2,6 +2,7 @@ package com.epia.config;
 
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +33,13 @@ public class SecurityConfig {
                 .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // 정적 리소스 경로 무시 설정
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring()
+                .requestMatchers("/resources/**", "/static/**", "/css/**", "/js/**", "/images/**");
     }
 
     @Bean
