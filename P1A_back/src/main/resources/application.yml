@@ -25,6 +25,8 @@ app:
     allowed-origins:
       - http://localhost:8080
       - http://localhost:3000
+      - https://epia.store
+      - https://www.epia.store
   files:
     local-base-dir: /tmp/epia-files
 
