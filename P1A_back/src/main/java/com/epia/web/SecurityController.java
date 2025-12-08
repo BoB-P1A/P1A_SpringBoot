@@ -141,6 +141,7 @@ public class SecurityController {
                     systemData.put("systemId", sys.id.toHexString());
                     systemData.put("systemName", sys.systemName);
                     systemData.put("securityChecklist", sys.securityChecklist != null ? sys.securityChecklist : new ArrayList<>());
+                    systemData.put("actionPlans", sys.actionPlans != null ? sys.actionPlans : new ArrayList<>());
                     return systemData;
                 })
                 .collect(Collectors.toList());
