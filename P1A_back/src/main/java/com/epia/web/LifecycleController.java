@@ -136,6 +136,7 @@ public class LifecycleController {
                     taskData.put("taskId", task.id.toHexString());
                     taskData.put("taskName", task.taskName);
                     taskData.put("lifecycleChecklist", task.lifecycleChecklist != null ? task.lifecycleChecklist : new ArrayList<>());
+                    taskData.put("actionPlans", task.actionPlans != null ? task.actionPlans : new ArrayList<>());
                     return taskData;
                 })
                 .collect(Collectors.toList());

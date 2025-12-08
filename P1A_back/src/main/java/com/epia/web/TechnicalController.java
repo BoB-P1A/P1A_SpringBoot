@@ -142,6 +142,7 @@ public class TechnicalController {
                     systemData.put("systemId", sys.id.toHexString());
                     systemData.put("systemName", sys.systemName);
                     systemData.put("technicalChecklist", sys.technicalChecklist != null ? sys.technicalChecklist : new ArrayList<>());
+                    systemData.put("actionPlans", sys.actionPlans != null ? sys.actionPlans : new ArrayList<>());
                     return systemData;
                 })
                 .collect(Collectors.toList());
