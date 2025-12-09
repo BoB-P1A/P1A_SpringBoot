@@ -1,10 +1,7 @@
 
 package com.epia.web;
 
-import com.epia.domain.LifecycleChecklistRow;
-import com.epia.domain.LifecycleFlowChart;
-import com.epia.domain.LifecycleFlowTable;
-import com.epia.domain.ProcessingTask;
+import com.epia.domain.*;
 import com.epia.domain.embedded.ChecklistItem;
 import com.epia.dto.FlowChartImageDto;
 import com.epia.dto.FlowChartImageUrlDto;
@@ -14,7 +11,9 @@ import com.epia.repo.LifecycleChecklistRepo;
 import com.epia.repo.LifecycleFlowChartRepo;
 import com.epia.repo.LifecycleFlowTableRepo;
 import com.epia.seq.SequenceService;
+import com.epia.service.AccountService;
 import com.epia.service.LifecycleService;
+import io.jsonwebtoken.Claims;
 import org.bson.types.ObjectId;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +27,7 @@ import java.util.stream.Collectors;
 public class LifecycleController {
 
     private final LifecycleService svc;
+    private final AccountService accountService;
     private final LifecycleFlowTableRepo ftRepo;
     private final LifecycleFlowChartRepo fcRepo;
     private final LifecycleChecklistRepo clRepo;
@@ -35,12 +35,14 @@ public class LifecycleController {
 
     public LifecycleController(
             LifecycleService svc,
+            AccountService accountService,
             LifecycleFlowTableRepo ftr,
             LifecycleFlowChartRepo fcr,
             LifecycleChecklistRepo clr,
             SequenceService s
     ) {
         this.svc = svc;
+        this.accountService = accountService;
         this.ftRepo = ftr;
         this.fcRepo = fcr;
         this.clRepo = clr;
@@ -69,7 +71,8 @@ public class LifecycleController {
     }
 
     @PostMapping("/checklists")
-    public Map<String, String> saveChecklists(@RequestBody Map<String, Object> body) {
+    public Map<String, String> saveChecklists(@RequestBody Map<String, Object> body,
+                                              @RequestAttribute(value = "user", required = false) Claims userClaims) {
         String companyId = (String) body.get("companyId");
         String taskId = (String) body.get("taskId");
         @SuppressWarnings("unchecked")
@@ -81,7 +84,17 @@ public class LifecycleController {
                 .map(this::mapToChecklistItem)
                 .collect(Collectors.toList());
 
-        svc.saveChecklists(companyId, new ObjectId(taskId), items);
+        // JWT에서 사용자 정보 추출
+        Account currentAccount = null;
+        if (userClaims != null) {
+            String loginId = userClaims.get("username", String.class);
+            if (loginId != null) {
+                currentAccount = accountService.findByLoginIdAndCompanyId(loginId, companyId);
+                System.out.println("현재 사용자: " + (currentAccount != null ? currentAccount.name : "없음"));
+            }
+        }
+
+        svc.saveChecklists(companyId, new ObjectId(taskId), items, currentAccount);
         return Map.of("message", "저장되었습니다");
     }
 
