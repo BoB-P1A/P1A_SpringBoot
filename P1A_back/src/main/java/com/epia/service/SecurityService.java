@@ -23,13 +23,16 @@ public class SecurityService {
 
     private final CompanyRepo companyRepo;
     private final SecurityImprovementRepo improvementRepo;
+    private final HistoryLogService historyLogService;
 
     public SecurityService(
             CompanyRepo companyRepo,
-            SecurityImprovementRepo improvementRepo
+            SecurityImprovementRepo improvementRepo,
+            HistoryLogService historyLogService
     ) {
         this.companyRepo = companyRepo;
         this.improvementRepo = improvementRepo;
+        this.historyLogService = historyLogService;
     }
 
     // ===== 시스템(대상) =====
@@ -135,7 +138,7 @@ public class SecurityService {
                 .orElseGet(ArrayList::new);
     }
 
-    public void saveChecklists(String companyId, ObjectId systemId, List<ChecklistItem> items) {
+    public void saveChecklists(String companyId, ObjectId systemId, List<ChecklistItem> items, Account currentAccount) {
         Company comp = companyRepo.findById(companyId)
                 .orElseThrow(() -> new ApiException(404, "회사 정보를 찾을 수 없습니다"));
 
@@ -144,8 +147,19 @@ public class SecurityService {
                 .findFirst()
                 .orElseThrow(() -> new ApiException(404, "시스템을 찾을 수 없습니다"));
 
+        // 기존 체크리스트를 Map으로 변환 (변경사항 추적용)
+        Map<String, ChecklistItem> previousItemsMap = new HashMap<>();
+        if (targetSystem.securityChecklist != null) {
+            for (ChecklistItem item : targetSystem.securityChecklist) {
+                previousItemsMap.put(item.no, item);
+            }
+        }
+
         targetSystem.securityChecklist = items;
         companyRepo.save(comp);
+
+        // 변경 이력 로깅 (currentAccount 전달)
+        logChecklistChanges(companyId, targetSystem, items, previousItemsMap, currentAccount);
     }
 
     /**
@@ -308,5 +322,33 @@ public class SecurityService {
 
         companyRepo.save(company);
         System.out.println("✅ 전체 조치계획 저장 완료");
+    }
+
+    /**
+     * 체크리스트 변경 이력을 HistoryLog에 저장
+     */
+    private void logChecklistChanges(
+            String companyId,
+            SecuritySystem system,
+            List<ChecklistItem> newItems,
+            Map<String, ChecklistItem> previousItemsMap,
+            Account account) {
+
+        for (ChecklistItem newItem : newItems) {
+            ChecklistItem previousItem = previousItemsMap.get(newItem.no);
+
+            historyLogService.logChecklistChange(
+                    companyId,
+                    "security",
+                    system.id.toHexString(),
+                    system.systemName,
+                    newItem.no,
+                    previousItem,
+                    newItem,
+                    account != null ? account.id : "SYSTEM",
+                    account != null ? account.loginId : "system",
+                    account != null ? account.name : "시스템"
+            );
+        }
     }
 }

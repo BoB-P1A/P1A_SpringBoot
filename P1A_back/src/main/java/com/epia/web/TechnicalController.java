@@ -5,7 +5,9 @@ import com.epia.domain.embedded.ActionPlan;
 import com.epia.domain.embedded.ChecklistItem;
 import com.epia.dto.TechnicalChecklistDetailDto;
 import com.epia.dto.TechnicalSystemDto;
+import com.epia.service.AccountService;
 import com.epia.service.TechnicalService;
+import io.jsonwebtoken.Claims;
 import org.bson.types.ObjectId;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,9 +21,11 @@ import java.util.stream.Collectors;
 public class TechnicalController {
 
     private final TechnicalService svc;
+    private final AccountService accountService;
 
-    public TechnicalController(TechnicalService svc) {
+    public TechnicalController(TechnicalService svc, AccountService accountService) {
         this.svc = svc;
+        this.accountService = accountService;
     }
 
     // ===== System =====
@@ -71,7 +75,8 @@ public class TechnicalController {
     }
 
     @PostMapping("/checklists")
-    public Map<String, String> saveChecklists(@RequestBody Map<String, Object> body) {
+    public Map<String, String> saveChecklists(@RequestBody Map<String, Object> body,
+                                              @RequestAttribute(value = "user", required = false) Claims userClaims) {
         String companyId = (String) body.get("companyId");
         String systemId = (String) body.get("systemId");
         @SuppressWarnings("unchecked")
@@ -83,7 +88,17 @@ public class TechnicalController {
                 .map(this::mapToChecklistItem)
                 .collect(Collectors.toList());
 
-        svc.saveChecklists(companyId, new ObjectId(systemId), items);
+        // JWT에서 사용자 정보 추출
+        Account currentAccount = null;
+        if (userClaims != null) {
+            String loginId = userClaims.get("username", String.class);
+            if (loginId != null) {
+                currentAccount = accountService.findByLoginIdAndCompanyId(loginId, companyId);
+                System.out.println("현재 사용자: " + (currentAccount != null ? currentAccount.name : "없음"));
+            }
+        }
+
+        svc.saveChecklists(companyId, new ObjectId(systemId), items, currentAccount);
         return Map.of("message", "저장되었습니다");
     }
 

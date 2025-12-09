@@ -222,4 +222,21 @@ public class AccountService {
         public String getCompanyId() { return companyId; }
         public void setCompanyId(String companyId) { this.companyId = companyId; }
     }
+
+    /**
+     * loginId와 companyId로 계정 조회
+     */
+    public Account findByLoginIdAndCompanyId(String loginId, String companyId) {
+        Company company = companyRepo.findById(companyId)
+                .orElse(null);
+
+        if (company == null || company.accounts == null) {
+            return null;
+        }
+
+        return company.accounts.stream()
+                .filter(account -> account.loginId.equals(loginId))
+                .findFirst()
+                .orElse(null);
+    }
 }
