@@ -306,6 +306,7 @@ public class TechnicalService {
                         dto.evidence = item.evidence;
                         dto.files = item.files;
                         dto.item = evalItem.item;
+                        dto.description = evalItem.description;
                         dto.law = evalItem.law;
                         dto.riskFactors = evalItem.riskFactors;
                         dto.improvementGuides = evalItem.improvementGuides;
