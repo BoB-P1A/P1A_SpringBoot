@@ -12,7 +12,7 @@ public class EvaluationItem {
     public String  subField;
     public String  no;
     public String  item;
-
+    public String  description;
     public String  riskFactors;
     public String  improvementGuides;
     public String  law;
