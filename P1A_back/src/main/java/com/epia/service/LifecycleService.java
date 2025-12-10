@@ -13,6 +13,7 @@ import com.epia.domain.embedded.DiscardData;
 import com.epia.dto.LifecycleChecklistDetailDto;
 import com.epia.dto.FlowChartImageDto;
 import com.epia.dto.FlowChartImageUrlDto;
+import com.epia.repo.HistoryLogRepo;
 import com.epia.storage.S3FileStorageService;
 import com.epia.repo.CompanyRepo;
 import com.epia.support.ApiException;
@@ -28,10 +29,12 @@ public class LifecycleService {
 
     private final CompanyRepo companyRepo;
     private final S3FileStorageService s3FileStorageService;
+    private final HistoryLogService historyLogService;
 
-    public LifecycleService(CompanyRepo companyRepo, S3FileStorageService s3FileStorageService) {
+    public LifecycleService(CompanyRepo companyRepo, S3FileStorageService s3FileStorageService, HistoryLogService historyLogService) {
         this.companyRepo = companyRepo;
         this.s3FileStorageService = s3FileStorageService;
+        this.historyLogService = historyLogService;
     }
 
     // ===== 처리업무 =====
@@ -57,7 +60,7 @@ public class LifecycleService {
                 .orElseGet(ArrayList::new);
     }
 
-    public void saveChecklists(String companyId, ObjectId taskId, List<ChecklistItem> items) {
+    public void saveChecklists(String companyId, ObjectId taskId, List<ChecklistItem> items, Account currentAccount) {
         Company comp = companyRepo.findById(companyId)
                 .orElseThrow(() -> new ApiException(404, "회사 정보를 찾을 수 없습니다"));
 
@@ -66,8 +69,19 @@ public class LifecycleService {
                 .findFirst()
                 .orElseThrow(() -> new ApiException(404, "처리업무를 찾을 수 없습니다"));
 
+        // 기존 체크리스트를 Map으로 변환 (변경사항 추적용)
+        Map<String, ChecklistItem> previousItemsMap = new HashMap<>();
+        if (targetTask.lifecycleChecklist != null) {
+            for (ChecklistItem item : targetTask.lifecycleChecklist) {
+                previousItemsMap.put(item.no, item);
+            }
+        }
+
         targetTask.lifecycleChecklist = items;
         companyRepo.save(comp);
+
+        // 변경 이력 로깅
+        logChecklistChanges(companyId, targetTask, items, previousItemsMap, currentAccount);
     }
 
     /**
@@ -564,6 +578,41 @@ public class LifecycleService {
         } catch (Exception e) {
             System.err.println("이미지 다운로드 실패: " + e.getMessage());
             throw new ApiException(500, "이미지 다운로드 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 체크리스트 변경 이력을 HistoryLog에 저장
+     *
+     * @param companyId 회사 ID
+     * @param task 처리업무
+     * @param newItems 새로운 체크리스트 항목들
+     * @param previousItemsMap 이전 체크리스트 항목들 (no를 key로 하는 Map)
+     * @param account 변경한 사용자 계정 정보 (추후 인증 정보 추가 시 사용)
+     */
+    private void logChecklistChanges(
+            String companyId,
+            ProcessingTask task,
+            List<ChecklistItem> newItems,
+            Map<String, ChecklistItem> previousItemsMap,
+            Account account) {
+
+        for (ChecklistItem newItem : newItems) {
+            ChecklistItem previousItem = previousItemsMap.get(newItem.no);
+
+            // 이전 값과 새로운 값 비교하여 변경사항이 있을 때만 로깅
+            historyLogService.logChecklistChange(
+                    companyId,
+                    "lifecycle",
+                    task.id.toHexString(),
+                    task.taskName,
+                    newItem.no,
+                    previousItem,
+                    newItem,
+                    account != null ? account.id : "SYSTEM",
+                    account != null ? account.loginId : "system",
+                    account != null ? account.name : "시스템"
+            );
         }
     }
 }

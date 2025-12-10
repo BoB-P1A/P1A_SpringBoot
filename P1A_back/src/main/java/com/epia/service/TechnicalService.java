@@ -22,15 +22,18 @@ public class TechnicalService {
     private final CompanyRepo companyRepo;
     private final TechnicalImprovementRepo improvementRepo;
     private final SequenceService seq;
+    private final HistoryLogService historyLogService;
 
     public TechnicalService(
             CompanyRepo companyRepo,
             TechnicalImprovementRepo improvementRepo,
-            SequenceService seq
+            SequenceService seq,
+            HistoryLogService historyLogService
     ) {
         this.companyRepo = companyRepo;
         this.improvementRepo = improvementRepo;
         this.seq = seq;
+        this.historyLogService = historyLogService;
     }
 
     // ===== 시스템(대상) =====
@@ -136,7 +139,7 @@ public class TechnicalService {
                 .orElseGet(ArrayList::new);
     }
 
-    public void saveChecklists(String companyId, ObjectId systemId, List<ChecklistItem> items) {
+    public void saveChecklists(String companyId, ObjectId systemId, List<ChecklistItem> items, Account currentAccount) {
         Company comp = companyRepo.findById(companyId)
                 .orElseThrow(() -> new ApiException(404, "회사 정보를 찾을 수 없습니다"));
 
@@ -145,8 +148,19 @@ public class TechnicalService {
                 .findFirst()
                 .orElseThrow(() -> new ApiException(404, "시스템을 찾을 수 없습니다"));
 
+        // 기존 체크리스트를 Map으로 변환 (변경사항 추적용)
+        Map<String, ChecklistItem> previousItemsMap = new HashMap<>();
+        if (targetSystem.technicalChecklist != null) {
+            for (ChecklistItem item : targetSystem.technicalChecklist) {
+                previousItemsMap.put(item.no, item);
+            }
+        }
+
         targetSystem.technicalChecklist = items;
         companyRepo.save(comp);
+
+        // 변경 이력 로깅 (새로운 로직 - 기존 로직과 별도 실행)
+        logChecklistChanges(companyId, targetSystem, items, previousItemsMap, currentAccount);
     }
 
     // ===== 조치계획 =====
@@ -309,5 +323,33 @@ public class TechnicalService {
 
     public void saveImprovements(TechnicalImprovement body) {
         improvementRepo.save(body);
+    }
+
+    /**
+     * 체크리스트 변경 이력을 HistoryLog에 저장
+     */
+    private void logChecklistChanges(
+            String companyId,
+            TechnicalSystem system,
+            List<ChecklistItem> newItems,
+            Map<String, ChecklistItem> previousItemsMap,
+            Account account) {
+
+        for (ChecklistItem newItem : newItems) {
+            ChecklistItem previousItem = previousItemsMap.get(newItem.no);
+
+            historyLogService.logChecklistChange(
+                    companyId,
+                    "technical",
+                    system.id.toHexString(),
+                    system.systemName,
+                    newItem.no,
+                    previousItem,
+                    newItem,
+                    account != null ? account.id : "SYSTEM",
+                    account != null ? account.loginId : "system",
+                    account != null ? account.name : "시스템"
+            );
+        }
     }
 }

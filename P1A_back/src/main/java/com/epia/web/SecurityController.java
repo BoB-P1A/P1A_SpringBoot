@@ -4,8 +4,10 @@ import com.epia.domain.*;
 import com.epia.domain.embedded.ChecklistItem;
 import com.epia.dto.SecurityChecklistDetailDto;
 import com.epia.dto.SecuritySystemDto;
+import com.epia.service.AccountService;
 import com.epia.service.SecurityService;
 import org.bson.types.ObjectId;
+import io.jsonwebtoken.Claims;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -19,8 +21,10 @@ public class SecurityController {
 
     private final SecurityService svc;
 
-    public SecurityController(SecurityService svc) {
+    private final AccountService accountService;
+    public SecurityController(SecurityService svc, AccountService accountService) {
         this.svc = svc;
+        this.accountService = accountService;
     }
 
     // ===== Targets (Systems) =====
@@ -70,7 +74,8 @@ public class SecurityController {
     }
 
     @PostMapping("/checklists")
-    public Map<String, String> saveChecklists(@RequestBody Map<String, Object> body) {
+    public Map<String, String> saveChecklists(@RequestBody Map<String, Object> body,
+                                              @RequestAttribute(value = "user", required = false) Claims userClaims) {
         String companyId = (String) body.get("companyId");
         String systemId = (String) body.get("systemId");
         @SuppressWarnings("unchecked")
@@ -82,7 +87,17 @@ public class SecurityController {
                 .map(this::mapToChecklistItem)
                 .collect(Collectors.toList());
 
-        svc.saveChecklists(companyId, new ObjectId(systemId), items);
+        // JWT에서 사용자 정보 추출
+        Account currentAccount = null;
+        if (userClaims != null) {
+            String loginId = userClaims.get("username", String.class);
+            if (loginId != null) {
+                currentAccount = accountService.findByLoginIdAndCompanyId(loginId, companyId);
+                System.out.println("현재 사용자: " + (currentAccount != null ? currentAccount.name : "없음"));
+            }
+        }
+
+        svc.saveChecklists(companyId, new ObjectId(systemId), items, currentAccount);
         return Map.of("message", "저장되었습니다");
     }
 
@@ -141,6 +156,7 @@ public class SecurityController {
                     systemData.put("systemId", sys.id.toHexString());
                     systemData.put("systemName", sys.systemName);
                     systemData.put("securityChecklist", sys.securityChecklist != null ? sys.securityChecklist : new ArrayList<>());
+                    systemData.put("actionPlans", sys.actionPlans != null ? sys.actionPlans : new ArrayList<>());
                     return systemData;
                 })
                 .collect(Collectors.toList());
